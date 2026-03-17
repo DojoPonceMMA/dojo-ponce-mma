@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Test Firebase Moderno</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  body{background:#111;color:#fff;font-family:Arial,sans-serif;padding:20px}
+  .card{background:#222;border:1px solid #444;border-radius:8px;padding:12px;margin-bottom:10px}
+  input,select{background:#333;color:#fff;border:1px solid #555;border-radius:4px;padding:8px;width:100%;margin-bottom:8px;box-sizing:border-box}
+  button{background:#C9A020;color:#000;border:none;border-radius:4px;padding:8px 16px;cursor:pointer;font-weight:700;margin:4px}
+  h2{color:#C9A020}
+  #status{color:#80F080;margin-bottom:10px}
+</style>
+</head>
+<body>
+
+<h2>🔥 Test Firebase Moderno — Dojo Ponce MMA</h2>
+<div id="status">Iniciando...</div>
+
+<h3>➕ Agregar Alumno</h3>
+<input id="nombre" placeholder="Nombre completo">
+<select id="plan">
+  <option value="Mensual">Mensual — $500</option>
+  <option value="Semanal">Semanal — $150</option>
+</select>
+<button onclick="agregarAlumno()">Guardar Alumno</button>
+
+<h3>👥 Lista de Alumnos</h3>
+<div id="lista"></div>
+
+<h3>📅 Próximos a Vencer</h3>
+<div id="vencimientos"></div>
+
+<h3>📱 Código QR Asistencia</h3>
+<div id="qr"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getFirestore, collection, addDoc, getDocs, updateDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyD1SlDhhEQ-Xx5EefItdcKx2fL6NXnFjKE",
+  authDomain: "dojo-ponce-mma.firebaseapp.com",
+  projectId: "dojo-ponce-mma",
+  storageBucket: "dojo-ponce-mma.firebasestorage.app",
+  messagingSenderId: "518023706022",
+  appId: "1:518023706022:web:3566a3e60a218d55410b67"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const alumnosRef = collection(db, "clientes");
+
+document.getElementById('status').textContent = '✅ Firebase conectado';
+
+window.agregarAlumno = async function(){
+  const nombre = document.getElementById("nombre").value.trim();
+  const plan = document.getElementById("plan").value;
+  if(!nombre){ alert("Nombre requerido"); return; }
+  const fi = new Date().toISOString().split('T')[0];
+  const dias = plan === 'Mensual' ? 30 : 7;
+  const venc = new Date();
+  venc.setDate(venc.getDate() + dias);
+  const vencimiento = venc.toISOString().split('T')[0];
+  await addDoc(alumnosRef, { nombre, plan, fi, vencimiento, estatus:'activo' });
+  document.getElementById("nombre").value = '';
+  alert("✅ " + nombre + " registrado");
+  cargarAlumnos();
+}
+
+async function cargarAlumnos(){
+  const lista = document.getElementById("lista");
+  const vencDiv = document.getElementById("vencimientos");
+  lista.innerHTML = "Cargando...";
+  const snap = await getDocs(alumnosRef);
+  const hoy = new Date().toISOString().split('T')[0];
+  let html = '', proximos = [];
+
+  snap.forEach(docu => {
+    const a = docu.data();
+    const diff = Math.round((new Date(a.vencimiento+'T12:00:00') - new Date(hoy+'T12:00:00')) / 864e5);
+    const estado = diff < 0 ? '🔴 Vencido' : diff <= 3 ? '🟡 Por vencer' : '🟢 Activo';
+    html += '<div class="card"><strong>' + (a.nombre||'—') + '</strong> — ' + (a.plan||'—') + 
+            '<br>ID: ' + docu.id + '<br>Vence: ' + (a.vencimiento||'—') + 
+            ' | Días: ' + diff + ' | ' + estado +
+            '<br><button onclick="registrarAsistencia(\'' + docu.id + '\')">✅ Asistencia</button></div>';
+    if(diff >= 0 && diff <= 3) proximos.push(a.nombre + ' (' + diff + ' días)');
+  });
+
+  lista.innerHTML = html || '<div class="card">Sin alumnos</div>';
+  vencDiv.innerHTML = proximos.length 
+    ? proximos.map(n => '<div class="card">⚠️ ' + n + '</div>').join('') 
+    : '<div class="card" style="color:#80F080">✅ Sin vencimientos próximos</div>';
+}
+
+window.registrarAsistencia = async function(id){
+  const ref = doc(db, "clientes", id);
+  const hoy = new Date().toISOString().split('T')[0];
+  const hora = new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
+  const asistRef = collection(db, "asistencias");
+  await addDoc(asistRef, { alumnoId: id, fecha: hoy, hora });
+  alert("✅ Asistencia registrada — " + hoy + " " + hora);
+}
+
+// QR
+try {
+  new QRCode(document.getElementById("qr"), {
+    text: location.href.split('?')[0] + "?asist=1",
+    width: 200, height: 200,
+    colorDark: '#C9A020', colorLight: '#000'
+  });
+} catch(e) {}
+
+// Init
+cargarAlumnos();
+</script>
+
+</body>
+</html>
