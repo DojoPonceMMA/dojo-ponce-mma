@@ -254,6 +254,8 @@ document.addEventListener('keydown',e=>{
 });
 
 document.addEventListener('DOMContentLoaded',init);
+// MODO ALUMNO: bloquear cualquier modal de admin
+document.querySelectorAll('[id*="whatsapp"],[id*="avisos"],[id*="modal"],[class*="modal"],[class*="overlay"]').forEach(function(el){ el.style.display='none'; el.style.visibility='hidden'; });
 </script>
 </body>
 </html>
