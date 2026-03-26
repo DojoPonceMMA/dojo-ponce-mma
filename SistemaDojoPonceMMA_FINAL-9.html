@@ -1,0 +1,2148 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Dojo Ponce MMA">
+<meta name="theme-color" content="#0a0804">
+<link rel="manifest" href="./manifest.json">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Dojo Ponce MMA — Sistema de Administración</title>
+<link rel="apple-touch-icon" href="https://dojoponcemma.github.io/dojo-ponce-mma/logo.png">
+<link rel="icon" type="image/png" href="https://dojoponcemma.github.io/dojo-ponce-mma/logo.png">
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --gold:#c9a84c;--gold-light:#f0c040;--gold-dark:#8a6a1a;
+  --red:#8b0000;--red-bright:#cc2200;
+  --bg:#0a0804;--bg-card:#1a1208;--bg-card2:#150f06;
+  --green-bright:#27ae60;--border-gold:rgba(201,168,76,0.3);
+  --text-light:#e8d5a0;--text-muted:#7a6a4a;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text-light);font-family:'Rajdhani',sans-serif;min-height:100vh;overflow-x:hidden}
+
+/* LOGIN */
+#login-screen-off{position:fixed;inset:0;background:radial-gradient(ellipse at 40% 40%,#3a2000,#1a0e00 40%,#050300);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9998;padding:1rem}
+
+#login-box{background:linear-gradient(135deg,#1a1208,#0d0a04);border:1px solid var(--border-gold);
+  border-radius:20px;padding:2rem 1.5rem;width:100%;max-width:360px;text-align:center;
+  box-shadow:0 20px 60px rgba(0,0,0,.9)}
+#login-box img{width:90px;margin-bottom:1rem}
+#login-box h2{font-family:'Cinzel',serif;color:var(--gold-light);font-size:1.3rem;margin-bottom:.3rem}
+#login-box p{color:var(--text-muted);font-size:.78rem;letter-spacing:.1em;margin-bottom:1.5rem}
+#login-pwd{width:100%;background:rgba(255,255,255,.05);border:1px solid var(--border-gold);
+  border-radius:10px;padding:.75rem;color:var(--text-light);font-size:1.1rem;text-align:center;
+  letter-spacing:.3em;margin-bottom:1rem;font-family:'Rajdhani',sans-serif}
+#login-pwd:focus{outline:none;border-color:var(--gold)}
+#login-err{color:#e74c3c;font-size:.8rem;margin-top:.5rem;display:none}
+#login-version{position:fixed;bottom:1rem;color:var(--text-muted);font-size:.65rem;letter-spacing:.1em}
+
+/* VISTA ALUMNO - solo asistencia y membresía */
+#alumno-screen{position:fixed;inset:0;background:var(--bg);display:none;flex-direction:column;z-index:9997;overflow-y:auto}
+#alumno-screen.show{display:flex}
+#alumno-nav{background:linear-gradient(135deg,#1a0e00,#2a1506);border-bottom:2px solid var(--border-gold);
+  padding:.6rem;display:flex;gap:.5rem;justify-content:center}
+
+#intro-video-screen{position:fixed;inset:0;z-index:10000;background:#000;display:flex;align-items:center;justify-content:center}
+#intro-video-screen.hide{display:none}
+#intro-vid{width:100%;height:100%;object-fit:cover}
+#splash{position:fixed;inset:0;background:radial-gradient(ellipse at 40% 40%,#3a2000,#1a0e00 40%,#050300);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;transition:opacity .8s}
+#splash.hide{opacity:0;pointer-events:none}
+#splash-logo{width:min(300px,75vw);max-width:320px;animation:spl 2.5s ease-in-out infinite;-webkit-transform:translateZ(0);transform:translateZ(0)}
+@keyframes spl{0%,100%{filter:drop-shadow(0 0 20px rgba(201,168,76,.4))}50%{filter:drop-shadow(0 0 60px rgba(201,168,76,1))}}
+#splash h1{font-family:'Cinzel',serif;font-size:clamp(1.6rem,6vw,2.8rem);color:var(--gold-light);letter-spacing:.15em;margin-top:.8rem;text-shadow:0 0 30px rgba(201,168,76,.6)}
+#splash p{letter-spacing:.3em;color:#a09060;font-size:clamp(.65rem,2.5vw,.9rem);margin-top:.3rem}
+#splash-div{width:min(280px,72vw);height:1px;background:linear-gradient(90deg,transparent,var(--red-bright),var(--gold),transparent);margin-top:1.2rem}
+#splash-wrap{width:min(280px,72vw);height:3px;background:rgba(255,255,255,.1);border-radius:2px;margin-top:.6rem;overflow:hidden}
+#splash-bar{height:100%;width:0%;background:linear-gradient(90deg,var(--red-bright),var(--gold-light));transition:width .3s ease}
+#app{display:none;min-height:100vh}
+#app.visible{display:block}
+#hdr{background:linear-gradient(135deg,#1a0e00,#2a1506 50%,#1a0800);border-bottom:2px solid var(--border-gold);
+  padding:.5rem 1rem;display:flex;align-items:center;gap:.7rem;flex-wrap:wrap;position:sticky;top:0;z-index:100;box-shadow:0 4px 20px rgba(0,0,0,.8)}
+#hdr img{width:55px;height:55px;object-fit:contain;image-rendering:-webkit-optimize-contrast}
+#hdr-info{flex:1;min-width:100px}
+#hdr-info h1{font-family:'Cinzel',serif;font-size:clamp(.9rem,3vw,1.3rem);color:var(--gold-light);line-height:1.1}
+#hdr-info p{font-size:.65rem;letter-spacing:.2em;color:var(--text-muted)}
+#hdr-meta{display:flex;gap:.4rem;flex-wrap:wrap}
+.mbadge{background:rgba(201,168,76,.1);border:1px solid var(--border-gold);border-radius:20px;padding:.25rem .6rem;font-size:.72rem;color:var(--gold);display:flex;align-items:center;gap:.3rem}
+.mbadge.on{border-color:rgba(39,174,96,.5);color:#27ae60;background:rgba(39,174,96,.1)}
+#nav{background:linear-gradient(180deg,#120a02,#0a0500);border-bottom:1px solid var(--border-gold);padding:.5rem;display:flex;flex-wrap:wrap;gap:.35rem;justify-content:center}
+.nb{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:clamp(.6rem,1.8vw,.78rem);letter-spacing:.06em;padding:.35rem .7rem;border:none;border-radius:8px;cursor:pointer;transition:all .18s;text-transform:uppercase;box-shadow:0 2px 8px rgba(0,0,0,.4)}
+.nb:hover{transform:translateY(-2px);filter:brightness(1.2)}
+.c1{background:linear-gradient(135deg,#1e6b30,#145020);color:#7fff9a}
+.c2{background:linear-gradient(135deg,#b84000,#7a2a00);color:#ffb07a}
+.c3{background:linear-gradient(135deg,#1a3a7a,#0d2050);color:#7ab4ff}
+.c4{background:linear-gradient(135deg,#0d5a5a,#083a3a);color:#7affea}
+.c5{background:linear-gradient(135deg,#6a1a9a,#4a0a6a);color:#dd88ff}
+.c6{background:linear-gradient(135deg,#3a3a3a,#252525);color:#b0b0b0}
+.c7{background:linear-gradient(135deg,#8b0000,#5a0000);color:#ff8888;border:1px solid #cc0000}
+.c8{background:linear-gradient(135deg,#7a5a10,#4a3808);color:#f0c040}
+.c9{background:linear-gradient(135deg,#0d4a6a,#082a3a);color:#7addff}
+.c10{background:linear-gradient(135deg,#5a1a8a,#3a0a5a);color:#cc88ff}
+.c11{background:linear-gradient(135deg,#4a5a10,#2a3408);color:#c8d870}
+#main{padding:.8rem;max-width:1200px;margin:0 auto}
+.mod{display:none}
+.mod.act{display:block;animation:fi .3s ease}
+@keyframes fi{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.mhd{display:flex;align-items:center;gap:.8rem;margin-bottom:1.2rem;padding-bottom:.8rem;border-bottom:1px solid var(--border-gold)}
+.mhd img{width:45px;height:45px;object-fit:contain}
+.mhd h2{font-family:'Cinzel',serif;font-size:clamp(1.1rem,4vw,1.6rem);color:var(--gold-light)}
+.mhd p{font-size:.68rem;letter-spacing:.2em;color:var(--text-muted)}
+.ma{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:1.2rem;justify-content:flex-end}
+.btn{font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:.04em;padding:.55rem 1.2rem;border:none;border-radius:8px;cursor:pointer;font-size:.88rem;transition:all .18s;display:inline-flex;align-items:center;gap:.35rem}
+.btn:hover{transform:translateY(-2px);filter:brightness(1.15)}
+.bs{background:linear-gradient(135deg,#1e6b30,#145020);color:#7fff9a}
+.bc{background:linear-gradient(135deg,#8b0000,#5a0000);color:#ff9999}
+.bh{background:linear-gradient(135deg,#7a5a10,#4a3808);color:#f0c040}
+.bsr{background:linear-gradient(135deg,#1a3a7a,#0d2050);color:#7ab4ff}
+.bw{background:linear-gradient(135deg,#075e54,#044a42);color:#7affcc}
+.bp{background:linear-gradient(135deg,#4a5a10,#2a3408);color:#c8d870}
+.bd{background:linear-gradient(135deg,#6b0000,#3a0000);color:#ff6666;border:1px solid #880000}
+.bi{background:linear-gradient(135deg,#4a3a00,#2a2000);color:#ffcc44;border:1px solid #6a5a10}
+.card{background:linear-gradient(135deg,var(--bg-card),var(--bg-card2));border:1px solid var(--border-gold);border-radius:12px;padding:1.1rem;margin-bottom:.9rem}
+.ct{font-family:'Cinzel',serif;color:var(--gold);font-size:.85rem;letter-spacing:.1em;margin-bottom:.9rem;display:flex;align-items:center;gap:.4rem;padding-bottom:.4rem;border-bottom:1px solid var(--border-gold)}
+.fg{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.9rem}
+.fgrp{display:flex;flex-direction:column;gap:.35rem}
+.fgrp label{font-size:.7rem;letter-spacing:.15em;color:var(--text-muted);text-transform:uppercase}
+.fgrp input,.fgrp select{background:rgba(255,255,255,.05);border:1px solid var(--border-gold);border-radius:8px;padding:.55rem .75rem;color:var(--text-light);font-family:'Rajdhani',sans-serif;font-size:.92rem;transition:border-color .2s}
+.fgrp input:focus,.fgrp select:focus{outline:none;border-color:var(--gold);background:rgba(201,168,76,.05)}
+.fgrp select option{background:#1a1208}
+.cbg{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.25rem}
+.cbi{display:flex;align-items:center;gap:.35rem;font-size:.83rem;cursor:pointer}
+.cbi input[type=checkbox]{accent-color:var(--gold);width:15px;height:15px}
+.kgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:.7rem;margin-bottom:.9rem}
+.kcard{border-radius:12px;padding:.9rem 1rem;border:1px solid}
+.kcard.ka{background:linear-gradient(135deg,#0d3d1a,#072810);border-color:rgba(39,174,96,.3)}
+.kcard.kv{background:linear-gradient(135deg,#3d2000,#281500);border-color:rgba(201,168,76,.3)}
+.kcard.kx{background:linear-gradient(135deg,#3d0000,#280000);border-color:rgba(204,34,0,.3)}
+.kcard.kh{background:linear-gradient(135deg,#001a3d,#000f28);border-color:rgba(74,144,226,.3)}
+.kcard.km{background:linear-gradient(135deg,#2a1d00,#1a1200);border-color:rgba(201,168,76,.4);grid-column:1/-1}
+.kl{font-size:.68rem;letter-spacing:.18em;text-transform:uppercase;display:flex;align-items:center;gap:.35rem;margin-bottom:.4rem}
+.kcard.ka .kl{color:#27ae60}.kcard.kv .kl{color:#f39c12}.kcard.kx .kl{color:#e74c3c}.kcard.kh .kl{color:#4a90e2}.kcard.km .kl{color:var(--gold)}
+.kval{font-family:'Cinzel',serif;font-size:2.3rem;line-height:1}
+.kcard.ka .kval{color:#2ecc71}.kcard.kv .kval{color:#f39c12}.kcard.kx .kval{color:#e74c3c}.kcard.kh .kval{color:#4a90e2}.kcard.km .kval{color:var(--gold-light);font-size:1.9rem}
+.tw{overflow-x:auto;border-radius:10px;border:1px solid var(--border-gold)}
+table{width:100%;border-collapse:collapse;font-size:.82rem}
+thead{background:linear-gradient(135deg,#8b0000,#5a0000)}
+thead th{padding:.65rem .75rem;text-align:left;font-family:'Cinzel',serif;font-size:.67rem;letter-spacing:.1em;color:var(--gold-light);white-space:nowrap}
+tbody tr{border-bottom:1px solid rgba(201,168,76,.1);transition:background .18s}
+tbody tr:hover{background:rgba(201,168,76,.05)}
+tbody td{padding:.55rem .75rem;color:var(--text-light)}
+.idbg{color:var(--gold);font-weight:700;font-size:.78rem}
+.sb{padding:.2rem .55rem;border-radius:12px;font-size:.68rem;font-weight:700;letter-spacing:.04em}
+.sa{background:rgba(39,174,96,.2);color:#2ecc71;border:1px solid rgba(39,174,96,.4)}
+.se{background:rgba(243,156,18,.2);color:#f39c12;border:1px solid rgba(243,156,18,.4)}
+.sv{background:rgba(231,76,60,.2);color:#e74c3c;border:1px solid rgba(231,76,60,.4)}
+.sbar{display:flex;gap:.45rem;margin-bottom:.9rem}
+.sbar input{flex:1;background:rgba(255,255,255,.05);border:1px solid var(--border-gold);border-radius:8px;padding:.55rem .9rem;color:var(--text-light);font-family:'Rajdhani',sans-serif;font-size:.92rem}
+.sbar input:focus{outline:none;border-color:var(--gold)}
+.mover{position:fixed;inset:0;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;z-index:500;padding:1rem;opacity:0;pointer-events:none;transition:opacity .3s}
+.mover.show{opacity:1;pointer-events:all}
+.mbox{background:linear-gradient(135deg,#1a1208,#0d0a04);border:1px solid var(--border-gold);border-radius:16px;padding:1.4rem;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.9);animation:min .3s ease}
+@keyframes min{from{transform:scale(.9);opacity:0}to{transform:scale(1);opacity:1}}
+.mbox h3{font-family:'Cinzel',serif;color:var(--gold-light);margin-bottom:.9rem;font-size:1.05rem;display:flex;align-items:center;gap:.4rem}
+.wai{display:flex;justify-content:space-between;align-items:center;padding:.75rem;background:rgba(7,94,84,.1);border:1px solid rgba(7,94,84,.3);border-radius:10px;margin-bottom:.5rem}
+.wai h4{color:var(--text-light);font-size:.92rem}
+.wai p{color:#f39c12;font-size:.78rem}
+/* ── CREDENCIAL ÉPICA VERTICAL ────────────────────────────── */
+#cred-prev{
+  width:320px;
+  height:441px;
+  margin:0 auto;
+  position:relative;
+  overflow:hidden;
+  border-radius:14px;
+  background:#060c1a;
+  box-shadow:0 8px 40px rgba(0,0,0,.9),0 0 0 2px #c9a84c;
+  font-family:'Rajdhani',sans-serif;
+}
+#cred-prev .dbg{
+  position:absolute;
+  top:0;left:0;right:0;
+  background:url('https://dojoponcemma.github.io/dojo-ponce-mma/dragon.png') center top/100% auto no-repeat;
+  height:100%;
+  opacity:1;z-index:0;
+}
+#cred-prev .cover{
+  position:absolute;inset:0;
+  background:linear-gradient(
+    to bottom,
+    rgba(0,0,0,.0) 0%,
+    rgba(0,0,0,.0) 55%,
+    rgba(0,0,0,.5) 70%,
+    rgba(0,0,0,.72) 100%
+  );
+  z-index:1;
+}
+#cred-prev .dc{
+  position:absolute;inset:0;z-index:2;
+}
+#cred-top{ display:none; }
+#cred-titulo{ display:none; }
+#cred-oficial{ display:none; }
+#cred-mid{ display:none; }
+#cred-logo-wrap{ display:none; }
+/* ID — centrado */
+#cred-datos{
+  position:absolute;
+  bottom:155px;
+  left:0;right:0;
+  text-align:center;
+}
+#c-id{
+  font-family:'Cinzel',serif;
+  font-size:1.3rem;font-weight:700;
+  color:#f0c040;
+  text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000,0 0 12px rgba(201,168,76,.6);
+  -webkit-text-stroke:.5px #000;
+  letter-spacing:.15em;
+  line-height:1.2;
+  display:block;
+}
+#c-nom{
+  font-family:'Rajdhani',sans-serif;
+  font-size:.95rem;font-weight:700;
+  color:#fff;
+  text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000,0 0 8px rgba(0,0,0,.9);
+  -webkit-text-stroke:.4px #000;
+  letter-spacing:.04em;
+  line-height:1.25;
+  display:block;
+  white-space:pre-line;
+}
+/* QR centrado con silueta de guante */
+#cred-qr-wrap{
+  position:absolute;
+  bottom:8px;
+  left:0;right:0;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  z-index:2;
+}
+
+#cred-qr{
+  background:#fff;
+  padding:6px;
+  border-radius:8px;
+  border:2px solid rgba(201,168,76,.7);
+  box-shadow:0 4px 16px rgba(0,0,0,.7),0 0 12px rgba(201,168,76,.3);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+#qr-ed{background:linear-gradient(135deg,#1a1208,#0d0a04);border:2px solid var(--gold);border-radius:16px;padding:1.8rem;text-align:center;max-width:400px;margin:0 auto}
+#qr-ed h2{font-family:'Cinzel',serif;color:var(--gold-light);letter-spacing:.15em;margin:.9rem 0 .3rem}
+#qr-dojo{display:flex;justify-content:center;margin:1.4rem 0}
+.hiw{background:rgba(201,168,76,.05);border:1px solid var(--border-gold);border-radius:10px;padding:.9rem;text-align:left;margin-top:.9rem}
+.hiw h4{color:var(--gold);font-family:'Cinzel',serif;font-size:.82rem;margin-bottom:.6rem}
+.hiw li{color:var(--text-light);font-size:.82rem;margin-bottom:.35rem;list-style:none;padding-left:.9rem;position:relative}
+.hiw li::before{content:"•";color:var(--gold);position:absolute;left:0}
+#aw{background:linear-gradient(135deg,#0d2a0d,#051505);border:2px solid rgba(39,174,96,.5);border-radius:16px;padding:1.8rem;text-align:center;max-width:400px;margin:0 auto;animation:wp .4s ease}
+@keyframes wp{from{transform:scale(.95);opacity:0}to{transform:scale(1);opacity:1}}
+#aw h2{font-family:'Cinzel',serif;color:#2ecc71;font-size:1.4rem;margin:.4rem 0}
+.motiv{color:var(--gold-light);font-style:italic;margin-top:.8rem;font-size:.92rem;line-height:1.5}
+.chdiv{background:rgba(255,255,255,.03);border:1px solid var(--border-gold);border-radius:12px;padding:.9rem;margin-bottom:.9rem;height:190px}
+.bch{display:flex;align-items:flex-end;gap:3px;height:140px;padding:0 .4rem}
+.br{flex:1;background:linear-gradient(180deg,var(--gold-light),var(--gold-dark));border-radius:4px 4px 0 0;min-width:18px;transition:height .5s;position:relative;cursor:pointer}
+.br:hover::after{content:attr(data-v);position:absolute;top:-22px;left:50%;transform:translateX(-50%);background:var(--gold);color:#000;padding:2px 5px;border-radius:4px;font-size:.67rem;white-space:nowrap}
+.bls{display:flex;gap:3px;padding:.25rem .4rem 0}
+.bl{flex:1;text-align:center;font-size:.58rem;color:var(--text-muted);min-width:18px}
+.bds{background:linear-gradient(135deg,#2a0a4a,#1a0530);border:1px solid rgba(150,50,220,.3);border-radius:12px;padding:.9rem;margin-bottom:.9rem}
+.bds h3{font-family:'Cinzel',serif;color:#cc88ff;font-size:.88rem;display:flex;align-items:center;gap:.4rem;margin-bottom:.7rem}
+.bdi{display:flex;justify-content:space-between;align-items:center;padding:.55rem;background:rgba(150,50,220,.1);border-radius:8px;margin-bottom:.35rem}
+.em{color:var(--text-muted);font-style:italic;text-align:center;padding:.9rem;font-size:.82rem}
+.ina{background:linear-gradient(135deg,#1a1208,#0d0804);border:1px solid var(--border-gold);border-radius:10px;padding:.9rem;margin-bottom:.7rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem}
+.itm{font-family:'Cinzel',serif;color:#e74c3c;font-size:.82rem}
+.pmth{background:linear-gradient(135deg,#1a1208,#120c04);border:1px solid var(--border-gold);border-radius:12px;padding:1.3rem;text-align:center;margin-bottom:.7rem}
+.pmth .pmi{font-size:2.3rem;margin-bottom:.4rem}
+.pmth h3{font-family:'Cinzel',serif;color:var(--gold-light);letter-spacing:.08em}
+.pmth p{color:var(--text-muted);font-size:.82rem;margin-top:.25rem}
+.mc{background:linear-gradient(135deg,#1a1208,#0d0804);border:2px solid var(--gold);border-radius:16px;padding:1.4rem;max-width:400px;margin:0 auto;text-align:center}
+.mc h2{font-family:'Cinzel',serif;color:var(--gold-light);margin:.4rem 0}
+.mdays{font-family:'Cinzel',serif;font-size:3rem;color:#2ecc71}
+.mdays.urg{color:#e74c3c;animation:blk 1s infinite}
+@keyframes blk{0%,100%{opacity:1}50%{opacity:.5}}
+#pwd-ov{position:fixed;inset:0;background:rgba(0,0,0,.93);display:flex;align-items:center;justify-content:center;z-index:800;padding:1rem}
+#pwd-ov.h{display:none}
+#pwd-box{background:linear-gradient(135deg,#1a1208,#0d0a04);border:1px solid var(--border-gold);border-radius:16px;padding:1.8rem;text-align:center;max-width:340px;width:100%}
+#pwd-box h3{font-family:'Cinzel',serif;color:var(--gold-light);margin-bottom:.8rem}
+#pwd-in{width:100%;background:rgba(255,255,255,.05);border:1px solid var(--border-gold);border-radius:8px;padding:.65rem;color:var(--text-light);font-size:1rem;text-align:center;letter-spacing:.2em;margin-bottom:.9rem}
+#pwd-in:focus{outline:none;border-color:var(--gold)}
+#toast{position:fixed;bottom:1.4rem;left:50%;transform:translateX(-50%) translateY(100px);background:linear-gradient(135deg,#1a6b2a,#0d4a1a);border:1px solid rgba(39,174,96,.5);color:#7fff9a;padding:.65rem 1.4rem;border-radius:30px;font-weight:600;z-index:9000;transition:transform .4s;font-size:.88rem;white-space:nowrap;box-shadow:0 8px 30px rgba(0,0,0,.6);pointer-events:none}
+#toast.show{transform:translateX(-50%) translateY(0)}
+#toast.err{background:linear-gradient(135deg,#6b0000,#3a0000);border-color:rgba(231,76,60,.5);color:#ff9999}
+@media(min-width:768px){.kgrid{grid-template-columns:repeat(4,1fr)}.kcard.km{grid-column:auto}}
+@media(max-width:520px){.ma{justify-content:stretch}.ma .btn{flex:1;justify-content:center;font-size:.78rem;padding:.5rem .6rem}}
+
+/* APP LOGIN SCREEN */
+#app-login{
+  position:fixed;inset:0;z-index:9999;
+  background:radial-gradient(ellipse at 40% 30%,#1a0e00,#0a0804 50%,#010100);
+  display:flex;align-items:center;justify-content:center;flex-direction:column;
+}
+#app-login.h{display:none;}
+#app-login-box{
+  background:linear-gradient(135deg,#1a1208,#0d0804);
+  border:2px solid var(--gold);
+  border-radius:18px;
+  padding:2.2rem 2rem;
+  max-width:340px;width:90%;
+  text-align:center;
+  box-shadow:0 12px 48px rgba(0,0,0,.8),0 0 40px rgba(201,168,76,.08);
+}
+#app-login-box img{width:80px;margin-bottom:1rem;filter:drop-shadow(0 4px 12px rgba(201,168,76,.3))}
+#app-login-box h2{
+  font-family:'Cinzel',serif;font-size:1.3rem;
+  color:var(--gold-light);letter-spacing:.1em;
+  margin-bottom:.3rem;
+}
+#app-login-box p{color:var(--text-muted);font-size:.82rem;margin-bottom:1.1rem;}
+#app-login-box input{
+  width:100%;background:rgba(201,168,76,.05);
+  border:1px solid rgba(201,168,76,.3);border-radius:8px;
+  padding:.7rem 1rem;color:var(--text-light);
+  font-size:1.1rem;text-align:center;letter-spacing:.2em;
+  font-family:'Rajdhani',sans-serif;
+  margin-bottom:.8rem;
+}
+#app-login-err{color:#e74c3c;font-size:.82rem;margin-bottom:.6rem;display:none;}
+
+</style>
+</head>
+
+<body>
+<div id="intro-video-screen">
+  <video id="intro-vid" src="intro-1.mp4" autoplay muted playsinline></video>
+</div>
+
+<div id="splash">
+  <img id="splash-logo" style="width:min(300px,75vw);max-width:320px;image-rendering:high-quality" src="logo.png" alt="Dojo Ponce MMA">
+  <h1>DOJO PONCE MMA</h1>
+  <p>SISTEMA DE ADMINISTRACIÓN</p>
+  <div id="splash-div"></div>
+  <div id="splash-wrap"><div id="splash-bar"></div></div>
+</div>
+<div id="app">
+<!-- APP LOGIN -->
+<div id="app-login">
+  <div id="app-login-box">
+    <img src="logo-sm.png" alt="Dojo Ponce MMA" onerror="this.src='https://dojoponcemma.github.io/dojo-ponce-mma/logo.png'">
+    <h2>DOJO PONCE MMA</h2>
+    <p>Sistema de Administración<br>Ingresa la contraseña para continuar</p>
+    <input id="app-pwd" type="password" placeholder="••••••••" autocomplete="current-password"
+      onkeydown="if(event.key==='Enter')verAppLogin()">
+    <div id="app-login-err">Contraseña incorrecta. Inténtalo de nuevo.</div>
+    <button class="btn bs" style="width:100%" onclick="verAppLogin()">🔐 ENTRAR</button>
+  </div>
+</div>
+
+<header id="hdr">
+  <img src="logo-sm.png" alt="Logo">
+  <div id="hdr-info"><h1>DOJO PONCE MMA</h1><p>SISTEMA DE ADMINISTRACIÓN</p></div>
+  <div id="hdr-meta">
+    <div class="mbadge" id="hdate">📅 ...</div>
+    <div class="mbadge" id="hstatus">☁️ Conectando...</div>
+    <button id="pwa-install-btn" onclick="instalarPWA()" style="display:none;background:linear-gradient(135deg,#c9a84c,#8a6a1a);color:#0a0804;border:none;border-radius:8px;padding:.3rem .65rem;font-size:.72rem;font-weight:700;cursor:pointer;font-family:'Rajdhani',sans-serif;letter-spacing:.04em;margin-top:2px">📲 INSTALAR</button>
+  </div>
+</header>
+<nav id="nav">
+  <button class="nb c1" onclick="show('m-reg')">📋 REGISTRO</button>
+  <button class="nb c2" onclick="show('m-pago')">💳 PAGO</button>
+  <button class="nb c3" onclick="show('m-asist')">✅ ASISTENCIA</button>
+  <button class="nb c4" onclick="show('m-alumnos')">👥 ALUMNOS</button>
+  <button class="nb c5" onclick="show('m-bday')">🎂 CUMPLEAÑOS</button>
+  <button class="nb c6" onclick="show('m-inact')">😴 INACTIVOS</button>
+  <button class="nb c7" onclick="openFin()">💰 FINANZAS</button>
+  <button class="nb c8" onclick="show('m-cred')">🪪 CREDENCIAL</button>
+  <button class="nb c9" onclick="show('m-qr')">🔲 QR ENTRADA</button>
+  <button class="nb c10" onclick="show('m-memb')">👤 MI MEMBRESÍA</button>
+  <button class="nb c11" onclick="show('m-rep')">📊 REPORTES</button>
+  <button class="nb c1" onclick="show('m-pagos')">💵 PAGOS</button>
+</nav>
+<div id="main">
+
+<!-- DASHBOARD -->
+<div id="m-dash" class="mod act">
+  <div class="mhd"><img src="logo-sm.png" alt="Logo"><div><h2>DOJO PONCE MMA</h2><p>SISTEMA DE ADMINISTRACIÓN</p></div></div>
+  <div style="display:flex;justify-content:flex-end;margin-bottom:.5rem">
+    <button class="btn" style="background:linear-gradient(135deg,#1a3a7a,#0d2050);color:#7ab4ff;padding:.4rem .9rem;font-size:.78rem" onclick="loadData().then(updDash);toast('✅ Datos actualizados')">🔄 ACTUALIZAR</button>
+  </div>
+  <div class="kgrid">
+    <div class="kcard ka"><div class="kl">👥 ACTIVOS</div><div class="kval" id="k-act">0</div></div>
+    <div class="kcard kv"><div class="kl">⚠️ VENCEN 3D</div><div class="kval" id="k-v3">0</div></div>
+    <div class="kcard kx"><div class="kl">🚨 VENCIDAS</div><div class="kval" id="k-vx">0</div></div>
+    <div class="kcard kh"><div class="kl">📅 HOY</div><div class="kval" id="k-hoy">0</div></div>
+    
+  </div>
+  <div class="card">
+    <div class="ct">⚠️ MEMBRESÍAS VENCIDAS Y POR VENCER</div>
+    <div class="tw"><table><thead><tr><th>ID</th><th>NOMBRE</th><th>PLAN</th><th>VENCE</th><th>DÍAS</th><th>ESTADO</th></tr></thead><tbody id="d-tbl"><tr><td colspan="6" class="em">Cargando datos...</td></tr></tbody></table></div>
+  </div>
+</div>
+
+<!-- REGISTRO -->
+<div id="m-reg" class="mod">
+  <div class="mhd"><img src="logo-sm.png" alt="Logo"><div><h2>REGISTRO</h2><p>NUEVO ALUMNO</p></div></div>
+  <div class="card">
+    <div class="ct">📋 DATOS DEL ALUMNO</div>
+    <div class="fg">
+      <div class="fgrp"><label>Nombre(s)</label><input id="r-nom" type="text" placeholder="Nombre(s)"></div>
+      <div class="fgrp"><label>Apellidos</label><input id="r-ap" type="text" placeholder="Apellidos"></div>
+      <div class="fgrp"><label>Edad</label><input id="r-edad" type="number" placeholder="Edad" min="4" max="99"></div>
+      <div class="fgrp"><label>Fecha de Nacimiento</label><input id="r-fn" type="date"></div>
+      <div class="fgrp"><label>CURP</label><input id="r-curp" type="text" placeholder="CURP" maxlength="18" style="text-transform:uppercase"></div>
+      <div class="fgrp"><label>Celular</label><input id="r-cel" type="tel" placeholder="614-000-0000"></div>
+      <div class="fgrp" style="grid-column:1/-1"><label>Dirección</label><input id="r-dir" type="text" placeholder="Calle, Número, Colonia"></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="ct">🥋 CLASE / HORARIO</div>
+    <div class="cbg">
+      <label class="cbi"><input type="checkbox" value="17:00-18:00"> Lun-Vie 5:00-6:00 PM</label>
+      <label class="cbi"><input type="checkbox" value="18:00-19:00"> Lun-Vie 6:00-7:00 PM</label>
+      <label class="cbi"><input type="checkbox" value="19:00-20:00"> Lun-Vie 7:00-8:00 PM</label>
+      <label class="cbi"><input type="checkbox" value="20:00-21:00"> Lun-Vie 8:00-9:00 PM</label>
+      <label class="cbi"><input type="checkbox" value="21:00-22:00"> Lun-Vie 9:00-10:00 PM (Avanzados)</label>
+      <label class="cbi"><input type="checkbox" value="sab-09:00-10:00"> Sábados 9:00-10:00 AM</label>
+    </div>
+  </div>
+  <div class="ma">
+    <button class="btn bs" onclick="guardarAlumno()">💾 GUARDAR</button>
+    <button class="btn bc" onclick="show('m-dash')">❌ CERRAR</button>
+    <button class="btn bh" onclick="show('m-dash')">🏠 DASHBOARD</button>
+  </div>
+</div>
+
+<!-- PAGO -->
+<div id="m-pago" class="mod">
+  <div class="mhd"><img src="logo-sm.png" alt="Logo"><div><h2>REGISTRAR PAGO</h2><p>MEMBRESÍA</p></div></div>
+  <div class="card">
+    <div class="ct">🔍 BUSCAR ALUMNO</div>
+    <div class="sbar"><input id="p-srch" type="text" placeholder="001 o nombre del alumno..."><button class="btn bsr" onclick="buscarPago()">🔍 BUSCAR</button></div>
+    <div id="p-info" style="display:none">
+      <div class="card" style="background:rgba(201,168,76,.05);border-color:var(--gold);margin-bottom:0">
+        <p style="color:var(--gold-light);font-size:1.05rem;font-weight:700" id="p-nom"></p>
+        <p style="color:var(--text-muted);font-size:.82rem" id="p-id"></p>
+      </div>
+    </div>
+  </div>
+  <div class="card" id="p-form" style="display:none">
+    <div class="ct">💳 DETALLES DEL PAGO</div>
+    <div class="fg">
+      <div class="fgrp"><label>Plan</label>
+        <select id="p-plan" onchange="calcPago()">
+          <option value="">Seleccionar plan...</option>
+          <option value="semanal">Semanal</option>
+          <option value="mensual">Mensual</option>
+        </select>
+      </div>
+      <div class="fgrp"><label>Fecha de Pago</label><input id="p-fecha" type="date"></div>
+      <div class="fgrp" style="grid-column:1/-1"><label>Referencia de Transferencia (opcional)</label><input id="p-ref" type="text" placeholder="Número de referencia bancaria"></div>
+    </div>
+    <label class="cbi" style="margin-top:.8rem"><input type="checkbox" id="p-insc" onchange="calcPago()"> Aplicar inscripción (+$<span id="p-ins-val">200</span>) — nuevo alumno</label>
+    <div style="margin-top:.9rem;padding:.9rem;background:rgba(201,168,76,.08);border-radius:8px;border:1px solid var(--border-gold)">
+      <p style="color:var(--text-muted);font-size:.75rem">TOTAL A PAGAR</p>
+      <p style="font-family:'Cinzel',serif;font-size:1.7rem;color:var(--gold-light)" id="p-total">$0</p>
+    </div>
+  </div>
+  <div class="ma">
+    <button class="btn bs" onclick="guardarPago()">💾 REGISTRAR</button>
+    <button class="btn bc" onclick="show('m-dash')">❌ CANCELAR</button>
+    <button class="btn bh" onclick="show('m-dash')">🏠 DASHBOARD</button>
+  </div>
+</div>
+
+<!-- ASISTENCIA -->
+<div id="m-asist" class="mod">
+  <div class="mhd"><img src="logo-sm.png" alt="Logo"><div><h2>ASISTENCIA</h2><p>REGISTRO DE ENTRADA</p></div></div>
+  <div id="a-form">
+    <div class="card">
+      <div class="ct">🥋 REGISTRAR ASISTENCIA</div>
+      <div class="sbar">
+        <input id="a-id" type="text" placeholder="ID: 001 (sin DP-)" onkeydown="if(event.key==='Enter')regAsist()">
+        <button class="btn bs" onclick="regAsist()">✅ REGISTRAR</button>
+      </div>
+      <p style="color:var(--text-muted);font-size:.78rem;margin-top:.4rem">También puedes escanear tu credencial QR con el escáner</p>
+    </div>
+    <div class="ma">
+      <button class="btn bc" onclick="show('m-dash')">❌ CERRAR</button>
+      <button class="btn bh" onclick="show('m-dash')">🏠 DASHBOARD</button>
+    </div>
+  </div>
+  <div id="aw" style="display:none">
+    <div style="font-size:2.8rem">🥋</div>
+    <h2 id="aw-nom">¡Bienvenido!</h2>
+    <p style="color:var(--text-muted);font-size:.82rem" id="aw-dt"></p>
+    <div style="display:flex;gap:.8rem;justify-content:center;margin:1rem 0;flex-wrap:wrap">
+      <div style="background:rgba(39,174,96,.1);border:1px solid rgba(39,174,96,.3);border-radius:10px;padding:.7rem 1rem;text-align:center">
+        <p style="color:#27ae60;font-size:.67rem;letter-spacing:.1em">DÍAS RESTANTES</p>
+        <p style="font-family:'Cinzel',serif;font-size:1.9rem;color:#2ecc71" id="aw-dias">0</p>
+      </div>
+      <div style="background:rgba(201,168,76,.1);border:1px solid var(--border-gold);border-radius:10px;padding:.7rem 1rem;text-align:center">
+        <p style="color:var(--gold);font-size:.67rem;letter-spacing:.1em">VENCE</p>
+        <p style="font-family:'Cinzel',serif;font-size:1rem;color:var(--gold-light)" id="aw-vence">--</p>
+      </div>
+    </div>
+    <p class="motiv" id="aw-mot"></p>
+    <div style="display:flex;gap:.5rem;justify-content:center;margin-top:1rem;flex-wrap:wrap">
+      <button class="btn bc" onclick="resetAsist()">❌ CERRAR</button>
+      <button class="btn bh" onclick="show('m-dash')">🏠 DASHBOARD</button>
+    </div>
+  </div>
+</div>
+
+<!-- ALUMNOS -->
+<div id="m-alumnos" class="mod" style="padding-bottom:60px">
+  <div class="mhd"><img src="logo-sm.png" alt="Logo"><div><h2>ALUMNOS</h2><p>LISTADO ACTIVOS</p></div></div>
+  <div class="card">
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.8rem">
+      <div class="sbar" style="flex:1;margin:0"><input id="al-q" type="text" placeholder="Buscar ID o nombre..." oninput="filtAlumnos()"></div>
+      <select id="al-cls" onchange="filtAlumnos()" style="background:rgba(255,255,255,.05);border:1px solid var(--border-gold);border-radius:8px;padding:.55rem;color:var(--text-light);font-family:'Rajdhani',sans-serif">
+        <option value="">Todas las clases</option>
+        <option value="17:00-18:00">5:00-6:00 PM</option>
+        <option value="18:00-19:00">6:00-7:00 PM</option>
+        <option value="19:00-20:00">7:00-8:00 PM</option>
+        <option value="20:00-21:00">8:00-9:00 PM</option>
+        <option value="21:00-22:00">9:00-10:00 PM</option>
+        <option value="sab-09:00-10:00">Sábados</option>
+      </select>
+    </div>
+    <div class="tw"><table><thead><tr><th>☑</th><th>ID</th><th>NOMBRE</th><th>PLAN</th><th>VENCE</th><th>ESTATUS</th><th>ACCIONES</th></tr></thead><tbody id="al-tbl"><tr><td colspan="9" class="em">Cargando...</td></tr></tbody></table></div>
+  </div>
+</div>
+<!-- BARRA FIJA ALUMNOS — siempre visible en pantalla -->
+<div id="barra-alumnos" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:400;background:linear-gradient(to top,#0a0804,rgba(10,8,4,.97));border-top:2px solid var(--border-gold);padding:.5rem .8rem;display:none">
+  <div style="display:flex;gap:.4rem;justify-content:center;flex-wrap:wrap;max-width:500px;margin:0 auto">
+    <button class="btn bi" style="font-size:.78rem;padding:.4rem .6rem;flex:1;min-width:100px" onclick="inactSel()">😴 INACTIVAR SEL.</button>
+    <button class="btn bc" style="font-size:.78rem;padding:.4rem .6rem;flex:1;min-width:80px" onclick="show('m-dash');ocultarBarraAlu()">❌ CERRAR</button>
+    <button class="btn bh" style="font-size:.78rem;padding:.4rem .6rem;flex:1;min-width:100px" onclick="show('m-dash');ocultarBarraAlu()">🏠 DASHBOARD</button>
+  </div>
+</div>
+
+<!-- CUMPLEAÑOS -->
+<div id="m-bday" class="mod">
+  <div class="mhd"><img src="logo-sm.png" alt="Logo"><div><h2>CUMPLEAÑOS</h2><p>ALUMNOS</p></div></div>
+  <div class="bds"><h3>🎂 HOY</h3><div id="bd-hoy"><p class="em">Sin cumpleaños hoy</p></div></div>
+  <div class="bds"><h3>🎁 PRÓXIMOS 7 DÍAS</h3><div id="bd-sem"><p class="em">Sin próximos cumpleaños</p></div></div>
+  <div class="bds"><h3 id="bd-mes-t">📅 MES ACTUAL</h3><div id="bd-mes"><p class="em">Sin cumpleaños este mes</p></div></div>
+  <div class="ma"><button class="btn bc" onclick="show('m-dash')">❌ CERRAR</button><button class="btn bh" onclick="show('m-dash')">🏠 DASHBOARD</button></div>
+</div>
+
+<!-- INACTIVOS -->
+<div id="m-inact" class="mod">
+  <div class="mhd"><img src="logo-sm.png" alt="Logo"><div><h2>INACTIVOS</h2><p>ALUMNOS INACTIVOS</p></div></div>
+  <div class="card">
+    <div class="sbar"><input id="in-q" type="text" placeholder="Buscar por ID o nombre..." oninput="filtInact()"></div>
+    <div id="in-list"><p class="em">Cargando...</p></div>
+  </div>
+  <div class="ma"><button class="btn bc" onclick="show('m-dash')">❌ CERRAR</button><button class="btn bh" onclick="show('m-dash')">🏠 DASHBOARD</button></div>
+</div>
+
+<!-- FINANZAS -->
+<div id="m-fin" class="mod">
+  <div class="mhd"><img src="logo-sm.png" alt="Logo"><div><h2>FINANZAS</h2><p>CONTROL FINANCIERO</p></div></div>
+  <div class="card">
+    <div class="ct">📊 INGRESOS DEL MES</div>
+    <div class="kgrid" style="grid-template-columns:repeat(auto-fit,minmax(130px,1fr))">
+      <div class="kcard km"><div class="kl">💰 TOTAL</div><div class="kval" id="f-tot" style="font-size:1.5rem">$0</div></div>
+      <div class="kcard ka"><div class="kl">📆 MENSUALES</div><div class="kval" id="f-men" style="font-size:1.5rem">0</div></div>
+      <div class="kcard kh"><div class="kl">📅 SEMANALES</div><div class="kval" id="f-sem" style="font-size:1.5rem">0</div></div>
+      <div class="kcard kv"><div class="kl">📋 INSCRIPC.</div><div class="kval" id="f-ins" style="font-size:1.5rem">0</div></div>
+    </div>
+  </div>
+  <div class="card"><div class="ct">📈 INGRESOS ÚLTIMOS 6 MESES</div><div class="chdiv"><div class="bch" id="f-ch"></div><div class="bls" id="f-cl"></div></div></div>
+  <div class="card">
+    <div class="ct">⚙️ TARIFAS EDITABLES</div>
+    <div class="fg">
+      <div class="fgrp"><label>💵 Semanal ($)</label><input id="t-sem" type="number" value="150" min="1"></div>
+      <div class="fgrp"><label>💵 Mensual ($)</label><input id="t-men" type="number" value="500" min="1"></div>
+      <div class="fgrp"><label>📋 Inscripción ($)</label><input id="t-ins" type="number" value="200" min="1"></div>
+    </div>
+    <div class="ma" style="margin-top:.8rem">
+      <button class="btn bs" onclick="guardarTarifas()">💾 GUARDAR TARIFAS</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="ct">💳 MÉTODOS DE PAGO Y CONTACTO</div>
+    <div class="fg">
+      <div class="fgrp"><label>📲 WhatsApp Notificaciones</label><input id="cfg-wa" type="tel" placeholder="6141234567"></div>
+      <div class="fgrp"><label>👤 Nombre Titular Cuenta</label><input id="cfg-titular" type="text" placeholder="Nombre completo"></div>
+      <div class="fgrp"><label>🏦 Número de Cuenta / CLABE</label><input id="cfg-cuenta" type="text" placeholder="0000 0000 0000 0000"></div>
+      <div class="fgrp"><label>📱 Usuario Mercado Pago</label><input id="cfg-mp-user" type="text" placeholder="@usuario"></div>
+      <div class="fgrp"><label>🔗 Link Mercado Pago</label><input id="cfg-mp-link" type="text" placeholder="https://link.mercadopago.com.mx/..."></div>
+      <label class="cbi" style="margin-top:.5rem"><input type="checkbox" id="cfg-efectivo" checked> 💵 Aceptar pago en efectivo en recepción</label>
+    </div>
+    <div class="ma" style="margin-top:.8rem">
+      <button class="btn bs" onclick="guardarConfig()">💾 GUARDAR CONFIGURACIÓN</button>
+      <button class="btn bc" onclick="show('m-dash')">❌ CERRAR</button>
+      <button class="btn bh" onclick="show('m-dash')">🏠 DASHBOARD</button>
+    </div>
+  </div>
+  <div class="card"><div class="ct">📋 ÚLTIMOS PAGOS</div><div class="tw"><table><thead><tr><th>FECHA</th><th>ALUMNO</th><th>PLAN</th><th>MONTO</th><th>REF.</th></tr></thead><tbody id="f-tbl"><tr><td colspan="5" class="em">Cargando...</td></tr></tbody></table></div></div>
+</div>
+
+<!-- CREDENCIAL -->
+<div id="m-cred" class="mod">
+  <div class="mhd"><img src="logo-sm.png" alt="Logo"><div><h2>CREDENCIAL</h2><p>CREDENCIALES DE MIEMBRO</p></div></div>
+  <div class="card">
+    <div class="ct">🪪 GENERAR CREDENCIAL</div>
+    <div class="sbar"><input id="c-srch" type="text" placeholder="001 o nombre completo..."><button class="btn bsr" onclick="buscarCred()">🔍 BUSCAR</button></div>
+  </div>
+  <div id="c-res" style="display:none">
+    <div id="cred-prev">
+      <div class="dbg"></div>
+      <div class="cover"></div>
+      <div class="dc">
+        <!-- DATOS: ID y nombre abajo a la izquierda -->
+        <div id="cred-datos">
+          <div id="c-id"></div>
+          <div id="c-nom"></div>
+        </div>
+        <!-- QR directo centrado -->
+        <div id="cred-qr-wrap">
+          <div id="cred-qr"></div>
+        </div>
+      </div>
+    </div>
+    <div style="max-width:400px;margin:1rem auto 0;position:relative">
+
+      <!-- Botones de acción -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">
+        <button class="btn bw" style="font-size:.8rem;padding:.6rem .4rem" onclick="credSoloWA()">📲 WhatsApp</button>
+        <button class="btn bp" style="font-size:.8rem;padding:.6rem .4rem" onclick="credSoloDescargar()">📥 Descargar</button>
+        <button class="btn" style="font-size:.8rem;padding:.6rem .4rem;background:linear-gradient(135deg,#1a3a5c,#0d2040);border:1px solid #4a7ab5;color:#a0c0e8;border-radius:10px;font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:.06em;cursor:pointer" onclick="credImprimir()">🖨️ Imprimir</button>
+        <button class="btn bh" style="font-size:.8rem;padding:.6rem .4rem" onclick="show('m-dash')">🏠 Dashboard</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- QR ENTRADA -->
+<div id="m-qr" class="mod">
+  <div class="mhd"><img src="logo-sm.png" alt="Logo"><div><h2>QR ENTRADA</h2><p>CÓDIGO DEL DOJO</p></div></div>
+  <div id="qr-ed">
+    <img src="logo-sm.png" style="width:75px" alt="Logo">
+    <h2>ESCANEA PARA REGISTRAR</h2>
+    <p style="color:var(--text-muted);font-size:.82rem">Dojo Ponce MMA — Asistencia</p>
+    <div id="qr-dojo"></div>
+    <p style="color:var(--text-muted);font-size:.75rem;margin-top:.5rem">Coloca esta pantalla en la entrada del gimnasio</p>
+    <div class="hiw">
+      <h4>📱 CÓMO FUNCIONA</h4>
+      <ul>
+        <li>El alumno escanea este QR con su celular</li>
+        <li>Se abre la pantalla de asistencia en su celular</li>
+        <li>Escribe su ID y presiona registrar</li>
+        <li>Aparece su membresía con días restantes</li>
+        <li>La asistencia queda registrada automáticamente</li>
+      </ul>
+    </div>
+  </div>
+  <div class="ma" style="max-width:400px;margin:1rem auto 0">
+    <button class="btn bp" onclick="impQR()">🖨️ IMPRIMIR</button>
+    <button class="btn bc" onclick="show('m-dash')">❌ CERRAR</button>
+    <button class="btn bh" onclick="show('m-dash')">🏠 DASHBOARD</button>
+  </div>
+</div>
+
+<!-- MI MEMBRESÍA -->
+<div id="m-memb" class="mod">
+  <div class="mhd"><img src="logo-sm.png" alt="Logo"><div><h2>MI MEMBRESÍA</h2><p>CONSULTA TU ESTATUS</p></div></div>
+  <div class="card">
+    <div class="sbar"><input id="mb-q" type="text" placeholder="001 o tu nombre..." onkeydown="if(event.key==='Enter')consMem()"><button class="btn bsr" onclick="consMem()">🔍 BUSCAR</button></div>
+  </div>
+  <div id="mb-res" style="display:none">
+    <div class="mc">
+      <img src="logo-sm.png" style="width:55px" alt="Logo">
+      <h2 id="mb-nom"></h2>
+      <p style="color:var(--gold);font-size:.82rem;letter-spacing:.1em" id="mb-id"></p>
+      <p style="color:var(--text-muted);font-size:.78rem;margin:.25rem 0" id="mb-plan"></p>
+      <div id="mb-dias" class="mdays">0</div>
+      <p style="color:var(--text-muted);font-size:.72rem">DÍAS RESTANTES</p>
+      <p style="color:var(--text-light);font-size:.82rem;margin-top:.5rem">Vence: <span id="mb-vence" style="color:var(--gold)"></span></p>
+      <div id="mb-sbadge" style="margin-top:.7rem"></div>
+    </div>
+  </div>
+  <div class="ma"><button class="btn bc" onclick="show('m-dash')">❌ CERRAR</button><button class="btn bh" onclick="show('m-dash')">🏠 DASHBOARD</button></div>
+</div>
+
+<!-- REPORTES -->
+<div id="m-rep" class="mod">
+  <div class="mhd"><img src="logo-sm.png" alt="Logo"><div><h2>REPORTES</h2><p>ANÁLISIS Y ESTADÍSTICAS</p></div></div>
+  <div class="card"><div class="ct">📈 NUEVOS INGRESOS POR MES</div><div class="chdiv"><div class="bch" id="r-ing"></div><div class="bls" id="r-ingl"></div></div></div>
+  <div class="card"><div class="ct">📉 INACTIVOS POR MES</div><div class="chdiv"><div class="bch" id="r-baj"></div><div class="bls" id="r-bajl"></div></div></div>
+  <div class="card"><div class="ct">✅ ASISTENCIAS POR DÍA (últ. 4 semanas)</div><div class="chdiv"><div class="bch" id="r-asis"></div><div class="bls" id="r-asisl"></div></div></div>
+  <div class="card">
+    <div class="ct">🏆 TOP ALUMNOS — MES ACTUAL</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+      <div><p style="color:#2ecc71;font-size:.72rem;letter-spacing:.1em;margin-bottom:.5rem">⬆️ MÁS ASISTENCIAS</p><div id="r-top1"></div></div>
+      <div><p style="color:#e74c3c;font-size:.72rem;letter-spacing:.1em;margin-bottom:.5rem">⬇️ MÁS FALTAS</p><div id="r-top2"></div></div>
+    </div>
+  </div>
+  <div class="card"><div class="ct">🧠 ANÁLISIS INTELIGENTE</div><div id="r-anal" style="color:var(--text-light);font-size:.88rem;line-height:2"></div></div>
+  <div class="ma"><button class="btn bc" onclick="show('m-dash')">❌ CERRAR</button><button class="btn bh" onclick="show('m-dash')">🏠 DASHBOARD</button></div>
+</div>
+
+<!-- PAGOS -->
+<div id="m-pagos" class="mod">
+  <div class="mhd"><img src="logo-sm.png" alt="Logo"><div><h2>PAGOS</h2><p>FORMAS DE PAGO</p></div></div>
+  <div class="pmth"><div class="pmi">🏦</div><h3>TRANSFERENCIA BANCARIA</h3><p>Depósito o transferencia SPEI</p><p style="color:var(--gold);margin-top:.4rem;font-size:.82rem" id="pag-cuenta">Cargando...</p></div>
+  <div class="pmth"><div class="pmi">📱</div><h3>MERCADO PAGO</h3><p>Pago digital instantáneo</p><p style="color:var(--gold);margin-top:.4rem;font-size:.82rem" id="pag-mp">Cargando...</p></div>
+  <div class="pmth" id="pag-efectivo-div"><div class="pmi">💵</div><h3>EFECTIVO</h3><p>En recepción del Dojo con recibo digital</p></div>
+  <div class="card">
+    <div class="ct">📋 PLANES DISPONIBLES</div>
+    <p style="margin-bottom:.5rem">📅 <strong style="color:var(--gold-light)">Mensual</strong> — <span id="pg-men">$500 MXN</span> · 30 días</p>
+    <p style="margin-bottom:.5rem">📅 <strong style="color:var(--gold-light)">Semanal</strong> — <span id="pg-sem">$150 MXN</span> · 7 días</p>
+    <p>📋 <strong style="color:var(--gold-light)">Inscripción</strong> — <span id="pg-ins">$200 MXN</span> · Único</p>
+  </div>
+  <div class="ma"><button class="btn bc" onclick="show('m-dash')">❌ CERRAR</button><button class="btn bh" onclick="show('m-dash')">🏠 DASHBOARD</button></div>
+</div>
+
+</div></div>
+
+<!-- MODALES -->
+<div class="mover" id="m-wa">
+  <div class="mbox" style="border-color:rgba(7,94,84,.6)">
+    <h3 style="color:#25d366">📱 AVISOS WHATSAPP</h3>
+    <div id="wa-list"></div>
+    <p style="color:var(--text-muted);font-size:.73rem;text-align:center;margin-top:.7rem">Toca "Enviar" para abrir WhatsApp</p>
+    <div style="text-align:center;margin-top:.9rem"><button class="btn bc" onclick="closeM('m-wa')">✕ CERRAR</button></div>
+  </div>
+</div>
+
+<div id="pwd-ov" class="h">
+  <div id="pwd-box">
+    <img src="logo-sm.png" style="width:65px;margin-bottom:.9rem" alt="Logo">
+    <h3>🔐 ACCESO RESTRINGIDO</h3>
+    <p style="color:var(--text-muted);font-size:.82rem;margin-bottom:.9rem">Contraseña para acceder a Finanzas</p>
+    <input id="pwd-in" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')verPwd()">
+    <div style="display:flex;gap:.5rem;justify-content:center">
+      <button class="btn bs" onclick="verPwd()">✓ INGRESAR</button>
+      <button class="btn bc" onclick="document.getElementById('pwd-ov').classList.add('h')">✕ CANCELAR</button>
+    </div>
+    <p id="pwd-err" style="color:#e74c3c;font-size:.78rem;margin-top:.4rem;display:none">❌ Contraseña incorrecta</p>
+  </div>
+</div>
+
+<div class="mover" id="cfm">
+  <div class="mbox" style="text-align:center">
+    <h3>⚠️ CONFIRMAR ELIMINACIÓN</h3>
+    <p id="cfm-msg" style="color:var(--text-light);margin:.7rem 0 .5rem;font-size:.92rem;line-height:1.6"></p>
+    <p id="cfm-warn" style="color:#e74c3c;font-size:.78rem;margin-bottom:1.3rem"></p>
+    <div style="display:flex;gap:.5rem;justify-content:center">
+      <button class="btn bd" id="cfm-yes">🗑️ SÍ, ELIMINAR</button>
+      <button class="btn bc" onclick="closeM('cfm')">✕ CANCELAR</button>
+    </div>
+  </div>
+</div>
+
+<div class="mover" id="m-alert">
+  <div class="mbox">
+    <h3 id="al-t"></h3>
+    <div id="al-c"></div>
+    <div style="text-align:center;margin-top:.9rem"><button class="btn bc" onclick="closeM('m-alert')">✕ CERRAR</button></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ============================================================
+// FIREBASE CONFIG
+// ⚙️ PARA PERSONALIZAR PARA OTRO GIMNASIO:
+// 1. Crea un proyecto en console.firebase.google.com
+// 2. Reemplaza los valores de FC con los del nuevo proyecto
+// 3. Cambia el nombre del gimnasio en el HTML (busca "DOJO PONCE MMA")
+// 4. Cambia las imágenes del logo y dragón
+// 5. Configura tarifas y métodos de pago desde el módulo Finanzas
+// ============================================================
+const FC={
+  apiKey:"AIzaSyD1SlDhhEQ-Xx5EefItdcKx2fL6NXnFjKE",
+  authDomain:"dojo-ponce-mma.firebaseapp.com",
+  projectId:"dojo-ponce-mma",
+  storageBucket:"dojo-ponce-mma.firebasestorage.app",
+  messagingSenderId:"518023706022",
+  appId:"1:518023706022:web:3566a3e60a218d55410b67"
+};
+firebase.initializeApp(FC);
+const db=firebase.firestore();
+db.enablePersistence({synchronizeTabs:true}).catch(err=>{
+  if(err.code==='failed-precondition'){console.warn('[Firebase] Persistencia: múltiples pestañas');}
+  else if(err.code==='unimplemented'){console.warn('[Firebase] Persistencia no soportada');}
+});
+
+// ============================================================
+// CONSTANTES
+// ============================================================
+const PWD_HASH='35cad048e42847c718d2b6199a7780543cc0c135c08fe193dbae6a851e6b74d3';
+const CUENTA='4152 3140 1884 1240';
+const CUENTA_NOM='Manuel Ponce';
+const FRASES=[
+  '¡Bienvenido al tatami! Hoy es un gran día para entrenar. ¡Vamos con todo! 🥋',
+  '¡Listo para brillar! El campeón comienza cada sesión con fuego en el corazón. 🔥',
+  '¡A entrenar! Cada clase te acerca más a la mejor versión de ti mismo. 💪',
+  '¡Aquí comienza la acción! El guerrero que se presenta ya ganó la mitad. ⚔️',
+  '¡Que empiece el entrenamiento! La disciplina de hoy es el triunfo de mañana. 🏆',
+  '¡Cuerpo listo, mente enfocada! Bienvenido a tu espacio de crecimiento. ⚡',
+  '¡El dojo te espera! Hoy forjas carácter, habilidad y determinación. 🎯',
+  '¡Bienvenido, guerrero! Cada repetición, cada round, te hace más fuerte. 🔱',
+  '¡A calentar! Los grandes atletas nacen en sesiones como esta. 🌟',
+  '¡Llegaste! Y con eso ya demostraste tu compromiso. Ahora a darlo todo. 🥇'
+];
+
+// Estado global
+let alumnos=[],pagos=[],asists=[];
+let tarifas={semanal:150,mensual:500,inscripcion:200};
+let config={
+  wa:'',titular:'Manuel Ponce',cuenta:'4152 3140 1884 1240',
+  mpUser:'',mpLink:'',efectivo:true
+};
+let pagoSel=null,credSel=null;
+
+// ============================================================
+// SANITIZACIÓN — DOMPurify
+// ============================================================
+function sn(str){
+  // Sanitiza texto para uso en innerHTML — elimina XSS
+  if(str===null||str===undefined)return '';
+  return DOMPurify.sanitize(String(str),{ALLOWED_TAGS:[],ALLOWED_ATTR:[]});
+}
+function snHtml(str){
+  // Sanitiza HTML permitiendo solo tags seguros
+  if(str===null||str===undefined)return '';
+  return DOMPurify.sanitize(String(str));
+}
+
+
+// ============================================================
+// ADMIN HASH & LOGIN
+// ============================================================
+const ADMIN_HASH='0c1bb2a0ed2d4f0be2ba4e65dc898053177125d11fb9956ba9ab5a5f64db527f';
+let isAlumnoView=false;
+
+let loginAttempts=0;
+let loginBlocked=false;
+async function doLogin(){
+  if(loginBlocked){
+    document.getElementById('login-err').textContent='Demasiados intentos. Espera 60 segundos.';
+    document.getElementById('login-err').style.display='block';
+    return;
+  }
+  const pwd=document.getElementById('login-pwd').value;
+  if(!pwd){return;}
+  const h=await sha256(pwd);
+  if(h===ADMIN_HASH){
+    loginAttempts=0;
+    // Mostrar splash y arrancar app
+    document.getElementById('splash').style.display='flex';
+    document.getElementById('splash').style.opacity='1';
+    initApp();
+  }else{
+    loginAttempts++;
+    document.getElementById('login-pwd').value='';
+    if(loginAttempts>=5){
+      loginBlocked=true;
+      document.getElementById('login-err').textContent='Bloqueado 60 segundos por múltiples intentos fallidos.';
+      document.getElementById('login-err').style.display='block';
+      setTimeout(()=>{
+        loginBlocked=false;
+        loginAttempts=0;
+        document.getElementById('login-err').style.display='none';
+        document.getElementById('login-err').textContent='Contraseña incorrecta';
+        document.getElementById('login-pwd').focus();
+      },60000);
+    }else{
+      document.getElementById('login-err').textContent=`Contraseña incorrecta. Intento ${loginAttempts}/5.`;
+      document.getElementById('login-err').style.display='block';
+      setTimeout(()=>{
+        document.getElementById('login-err').style.display='none';
+        document.getElementById('login-pwd').focus();
+      },2000);
+    }
+  }
+}
+
+function showAlumod(id){
+  document.getElementById('alu-asist').style.display='none';
+  document.getElementById('alu-memb').style.display='none';
+  document.getElementById(id).style.display='block';
+}
+
+async function aluRegAsist(){
+  let raw=document.getElementById('alu-a-id').value.trim().toUpperCase();
+  const id=raw.startsWith('DP-')?raw:'DP-'+raw;
+  if(!id||id==='DP-'){toast('Ingresa tu ID',true);return;}
+  const a=alumnos.find(x=>(x.alumnoId||'').toUpperCase()===id);
+  if(!a){toast('ID no encontrado',true);return;}
+  if(a.estado==='inactivo'){mostrarModalVencido(a,'inactivo');return;}
+  const hoyD0=new Date();hoyD0.setHours(0,0,0,0);
+  const venceD0=a.fechaVencimiento?new Date(a.fechaVencimiento+'T12:00:00'):null;
+  const diasD0=venceD0?Math.ceil((venceD0-hoyD0)/86400000):null;
+  if(diasD0!==null&&diasD0<=0){mostrarModalVencido(a,'vencida');return;}
+  if(diasD0!==null&&diasD0<=3){mostrarModalVencido(a,'por_vencer');}
+  const hoy=new Date().toISOString().split('T')[0];
+  if(asists.find(x=>x.alumnoId===a.alumnoId&&x.fecha===hoy)){toast('⚠️ Ya registraste tu asistencia hoy',true);return;}
+  const now=new Date();
+  const ad={alumnoId:a.alumnoId,nombre:`${a.nombre} ${a.apellidos}`,fecha:hoy,hora:now.toTimeString().split(' ')[0],timestamp:now.toISOString()};
+  try{
+    const r=await db.collection('asistencias').add(ad);
+    asists.push({id:r.id,...ad});
+    const hoyD=new Date();hoyD.setHours(0,0,0,0);
+    const vence=a.fechaVencimiento?new Date(a.fechaVencimiento+'T12:00:00'):null;
+    const dias=vence?Math.max(0,Math.ceil((vence-hoyD)/86400000)):0;
+    document.getElementById('alu-aw-nom').textContent=`¡Hola, ${a.nombre}!`;
+    document.getElementById('alu-aw-dt').textContent=now.toLocaleDateString('es-MX',{weekday:'long',year:'numeric',month:'long',day:'numeric'})+' — '+now.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
+    document.getElementById('alu-aw-dias').textContent=dias;
+    document.getElementById('alu-aw-vence').textContent=vence?fd(a.fechaVencimiento):'N/A';
+    document.getElementById('alu-aw-mot').textContent=FRASES[Math.floor(Math.random()*FRASES.length)];
+    document.getElementById('alu-a-form').style.display='none';
+    document.getElementById('alu-aw').style.display='block';
+  }catch(e){toast('Error al registrar',true);console.error(e);}
+}
+
+function resetAluAsist(){
+  document.getElementById('alu-a-id').value='';
+  document.getElementById('alu-a-form').style.display='block';
+  document.getElementById('alu-aw').style.display='none';
+}
+
+function aluConsMem(){
+  let qr=document.getElementById('alu-mb-q').value.trim();
+  const q=(/^\d+$/.test(qr)?'DP-'+qr:qr).toLowerCase();
+  if(!q)return;
+  const a=alumnos.find(x=>(x.alumnoId||'').toLowerCase()===q||`${x.nombre} ${x.apellidos}`.toLowerCase().includes(q));
+  if(!a){toast('No encontrado',true);return;}
+  const hoy=new Date();hoy.setHours(0,0,0,0);
+  const vence=a.fechaVencimiento?new Date(a.fechaVencimiento+'T12:00:00'):null;
+  const dias=vence?Math.max(0,Math.ceil((vence-hoy)/86400000)):0;
+  document.getElementById('alu-mb-nom').textContent=`${a.nombre} ${a.apellidos}`;
+  document.getElementById('alu-mb-id').textContent=a.alumnoId;
+  document.getElementById('alu-mb-plan').textContent=a.planActual?`Plan ${a.planActual}`:'Sin plan activo';
+  const de=document.getElementById('alu-mb-dias');
+  de.textContent=dias;de.className='mdays'+(dias<=3?' urg':'');
+  document.getElementById('alu-mb-vence').textContent=fd(a.fechaVencimiento)||'N/A';
+  let st='';
+  if(!a.fechaVencimiento)st='<span class="sb se">SIN MEMBRESÍA</span>';
+  else if(dias<=0)st='<span class="sb sv">VENCIDA</span>';
+  else if(dias<=3)st='<span class="sb se">POR VENCER</span>';
+  else st='<span class="sb sa">ACTIVA ✅</span>';
+  document.getElementById('alu-mb-badge').innerHTML=st;
+  document.getElementById('alu-mb-res').style.display='block';
+}
+
+// ============================================================
+// VIDEO INTRO
+// ============================================================
+(function(){
+  const introScreen = document.getElementById('intro-video-screen');
+  const introVid = document.getElementById('intro-vid');
+  if(!introScreen || !introVid) return;
+  introVid.addEventListener('ended', () => introScreen.classList.add('hide'));
+  introVid.addEventListener('error', () => introScreen.classList.add('hide'));
+  setTimeout(() => introScreen.classList.add('hide'), 9000);
+})();
+
+// ============================================================
+// SPLASH & INIT
+// ============================================================
+async function initApp(){
+  const bar=document.getElementById('splash-bar');
+  let p=0;
+  const iv=setInterval(()=>{p=Math.min(p+Math.random()*12,82);bar.style.width=p+'%'},250);
+  try{
+    const td=await db.collection('config').doc('tarifas').get();
+    if(td.exists)tarifas={...tarifas,...td.data()};
+  }catch(e){}
+  clearInterval(iv);bar.style.width='100%';
+  await new Promise(r=>setTimeout(r,700));
+  document.getElementById('splash').classList.add('hide');
+  document.getElementById('app').classList.add('visible');
+  setTimeout(()=>document.getElementById('splash').style.display='none',900);
+  updDate();setInterval(updDate,60000);
+  await loadData();
+  autoInactivar();
+  genQREntrada();
+  checkWA();
+  // Dashboard carga por defecto (el QR de entrada usa asistencia.html separado)
+}
+
+function updDate(){
+  const n=new Date();
+  const ds=['dom','lun','mar','mié','jue','vie','sáb'];
+  const ms=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  document.getElementById('hdate').textContent=`📅 ${ds[n.getDay()]} ${n.getDate()} de ${ms[n.getMonth()]}`;
+}
+
+// ============================================================
+// LOAD DATA
+// ============================================================
+async function loadData(){
+  try{
+    document.getElementById('hstatus').textContent='☁️ Conectando...';
+    document.getElementById('hstatus').className='mbadge';
+    const[a,p,s,cfg]=await Promise.all([
+      db.collection('alumnos').get(),
+      db.collection('pagos').get(),
+      db.collection('asistencias').get(),
+      db.collection('config').doc('general').get()
+    ]);
+    if(cfg.exists)config={...config,...cfg.data()};
+    alumnos=a.docs.map(d=>({id:d.id,...d.data()}));
+    pagos=p.docs.map(d=>({id:d.id,...d.data()}));
+    asists=s.docs.map(d=>({id:d.id,...d.data()}));
+    document.getElementById('hstatus').textContent='☁️ En línea';
+    document.getElementById('hstatus').className='mbadge on';
+    updDash();
+    actualizarPagosMod();
+  }catch(e){
+    document.getElementById('hstatus').textContent='⚠️ Sin conexión';
+    toast('Error al conectar con Firebase',true);
+    console.error(e);
+  }
+}
+
+// ============================================================
+// DASHBOARD
+// ============================================================
+function updDash(){
+  const hoy=new Date();hoy.setHours(0,0,0,0);
+  const act=alumnos.filter(a=>a.estado==='activo');
+  const v3=alumnos.filter(a=>{
+    if(!a.fechaVencimiento||a.estado==='inactivo')return false;
+    const v=new Date(a.fechaVencimiento+'T12:00:00');v.setHours(0,0,0,0);
+    const d=Math.ceil((v-hoy)/86400000);return d>=0&&d<=3;
+  });
+  const vx=alumnos.filter(a=>{
+    if(!a.fechaVencimiento||a.estado==='inactivo')return false;
+    const v=new Date(a.fechaVencimiento+'T12:00:00');v.setHours(0,0,0,0);
+    return v<hoy;
+  });
+  const ah=asists.filter(a=>{const d=new Date(a.fecha+'T12:00:00');d.setHours(0,0,0,0);return d.getTime()===hoy.getTime();});
+  const mc=`${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,'0')}`;
+  const tm=pagos.filter(p=>p.fecha&&p.fecha.startsWith(mc)).reduce((s,p)=>s+(p.monto||0),0);
+  document.getElementById('k-act').textContent=act.length;
+  document.getElementById('k-v3').textContent=v3.length;
+  document.getElementById('k-vx').textContent=vx.length;
+  document.getElementById('k-hoy').textContent=ah.length;
+  // k-mes movido a módulo de Finanzas
+  const items=[...vx,...v3.filter(a=>!vx.includes(a))];
+  const tb=document.getElementById('d-tbl');
+  if(!items.length){tb.innerHTML='<tr><td colspan="6" class="em">✅ Sin membresías vencidas o por vencer</td></tr>';return;}
+  tb.innerHTML=items.map(a=>{
+    const v=new Date(a.fechaVencimiento+'T12:00:00');v.setHours(0,0,0,0);
+    const d=Math.ceil((v-hoy)/86400000);
+    const st=d<0?'<span class="sb sv">VENCIDA</span>':d===0?'<span class="sb sv">HOY</span>':'<span class="sb se">'+d+'D</span>';
+    return`<tr><td class="idbg">${a.alumnoId||''}</td><td>${a.nombre||''} ${a.apellidos||''}</td><td>${a.planActual||'-'}</td><td>${fd(a.fechaVencimiento)}</td><td>${Math.abs(d)}</td><td>${st}</td></tr>`;
+  }).join('');
+}
+
+// ============================================================
+// NAVEGACIÓN
+// ============================================================
+function show(id){
+  document.querySelectorAll('.mod').forEach(m=>m.classList.remove('act'));
+  const el=document.getElementById(id);
+  if(!el)return;
+  el.classList.add('act');
+  window.scrollTo(0,0);
+  if(id==='m-alumnos'){filtAlumnos();mostrarBarraAlu();}
+  else{ocultarBarraAlu();}
+  if(id==='m-inact')filtInact();
+  if(id==='m-bday')rendBday();
+  if(id==='m-rep')rendRep();
+  if(id==='m-fin')rendFin();
+}
+
+// ============================================================
+// REGISTRO DE ALUMNO
+// ============================================================
+function genId(){
+  const ns=alumnos.map(a=>{const n=parseInt((a.alumnoId||'DP-000').split('-')[1]);return isNaN(n)?0:n;});
+  return'DP-'+String((ns.length?Math.max(...ns):0)+1).padStart(3,'0');
+}
+async function guardarAlumno(){
+  const nom=sn(document.getElementById('r-nom').value.trim());
+  const ap=sn(document.getElementById('r-ap').value.trim());
+  const cel=sn(document.getElementById('r-cel').value.trim());
+  if(!nom||!ap||!cel){toast('Nombre, apellidos y celular son obligatorios',true);return;}
+  const clases=[...document.querySelectorAll('#m-reg .cbi input:checked')].map(c=>c.value);
+  const aid=genId();
+  const data={alumnoId:aid,nombre:nom,apellidos:ap,edad:parseInt(document.getElementById('r-edad').value)||0,
+    fechaNacimiento:document.getElementById('r-fn').value,curp:document.getElementById('r-curp').value.trim().toUpperCase(),
+    celular:cel,direccion:document.getElementById('r-dir').value.trim(),clases,estado:'activo',
+    fechaRegistro:new Date().toISOString().split('T')[0],planActual:null,fechaUltimoPago:null,fechaVencimiento:null,fechaInactivacion:null};
+  try{
+    await db.collection('alumnos').doc(aid).set(data);
+    alumnos.push({id:aid,...data});
+    toast(`✅ Alumno registrado: ${aid}`);
+    ['r-nom','r-ap','r-edad','r-fn','r-curp','r-cel','r-dir'].forEach(i=>document.getElementById(i).value='');
+    document.querySelectorAll('#m-reg .cbi input').forEach(c=>c.checked=false);
+    updDash();
+  }catch(e){toast('Error al guardar alumno',true);console.error(e);}
+}
+
+// ============================================================
+// PAGO
+// ============================================================
+function buscarPago(){
+  let qr=document.getElementById('p-srch').value.trim();
+  const q=(/^\d+$/.test(qr)?'DP-'+qr:qr).toLowerCase();
+  if(!q)return;
+  const a=alumnos.find(x=>(x.alumnoId||'').toLowerCase()===q||`${x.nombre} ${x.apellidos}`.toLowerCase().includes(q));
+  if(!a){toast('Alumno no encontrado',true);return;}
+  pagoSel=a;
+  document.getElementById('p-nom').textContent=`${a.nombre} ${a.apellidos}`;
+  document.getElementById('p-id').textContent=`ID: ${a.alumnoId}`;
+  document.getElementById('p-info').style.display='block';
+  document.getElementById('p-form').style.display='block';
+  document.getElementById('p-fecha').value=new Date().toISOString().split('T')[0];
+  document.getElementById('p-ins-val').textContent=tarifas.inscripcion;
+  calcPago();
+}
+function calcPago(){
+  const plan=document.getElementById('p-plan').value;
+  const ins=document.getElementById('p-insc').checked;
+  let t=0;
+  if(plan==='semanal')t+=tarifas.semanal;
+  if(plan==='mensual')t+=tarifas.mensual;
+  if(ins)t+=tarifas.inscripcion;
+  document.getElementById('p-total').textContent='$'+t.toLocaleString();
+}
+async function guardarPago(){
+  if(!pagoSel){toast('Busca un alumno primero',true);return;}
+  const plan=document.getElementById('p-plan').value;
+  const fecha=document.getElementById('p-fecha').value;
+  const ref=document.getElementById('p-ref').value.trim();
+  const ins=document.getElementById('p-insc').checked;
+  if(!plan||!fecha){toast('Selecciona plan y fecha',true);return;}
+  const dias=plan==='semanal'?7:30;
+  // Si el alumno tiene membresía vigente, sumar desde fecha de vencimiento actual
+  // Si ya venció, sumar desde la fecha de pago
+  const hoyBase=new Date();hoyBase.setHours(0,0,0,0);
+  let baseDate=new Date(fecha+'T12:00:00');
+  if(pagoSel.fechaVencimiento){
+    const venceActual=new Date(pagoSel.fechaVencimiento+'T12:00:00');venceActual.setHours(0,0,0,0);
+    if(venceActual>hoyBase) baseDate=venceActual; // Membresía vigente: suma desde vencimiento
+  }
+  const fv=new Date(baseDate);fv.setDate(fv.getDate()+dias);
+  const fvStr=fv.toISOString().split('T')[0];
+  let monto=plan==='semanal'?tarifas.semanal:tarifas.mensual;
+  if(ins)monto+=tarifas.inscripcion;
+  const pd={alumnoId:pagoSel.alumnoId,nombre:`${pagoSel.nombre} ${pagoSel.apellidos}`,
+    plan,fecha,referencia:ref||null,inscripcion:ins,monto,fechaVencimiento:fvStr,timestamp:new Date().toISOString()};
+  const au={planActual:plan,fechaUltimoPago:fecha,fechaVencimiento:fvStr,estado:'activo',fechaInactivacion:null};
+  try{
+    const r=await db.collection('pagos').add(pd);
+    await db.collection('alumnos').doc(pagoSel.alumnoId).update(au);
+    pagos.push({id:r.id,...pd});
+    const i=alumnos.findIndex(a=>a.alumnoId===pagoSel.alumnoId);
+    if(i>=0)alumnos[i]={...alumnos[i],...au};
+    toast(`✅ Pago registrado. Vence: ${fd(fvStr)}`);
+    pagoSel=null;
+    document.getElementById('p-srch').value='';
+    document.getElementById('p-info').style.display='none';
+    document.getElementById('p-form').style.display='none';
+    document.getElementById('p-ref').value='';
+    document.getElementById('p-plan').value='';
+    document.getElementById('p-insc').checked=false;
+    updDash();
+  }catch(e){toast('Error al registrar pago',true);console.error(e);}
+}
+
+// ============================================================
+// ASISTENCIA
+// ============================================================
+async function regAsist(overrideId){
+  let raw=(overrideId||document.getElementById('a-id').value.trim()).toUpperCase();
+  const id=raw.startsWith('DP-')?raw:'DP-'+raw;
+  if(!id||id==='DP-'){toast('Ingresa tu ID',true);return;}
+  const a=alumnos.find(x=>(x.alumnoId||'').toUpperCase()===id);
+  if(!a){toast('ID no encontrado',true);return;}
+  if(a.estado==='inactivo'){
+    mostrarModalVencido(a,'inactivo',true);return;
+  }
+  const hoy=new Date().toISOString().split('T')[0];
+  if(asists.find(x=>x.alumnoId===a.alumnoId&&x.fecha===hoy)){toast('⚠️ Ya registraste tu asistencia hoy',true);return;}
+  // Verificar vencimiento
+  const hoyDv=new Date();hoyDv.setHours(0,0,0,0);
+  const venceV=a.fechaVencimiento?new Date(a.fechaVencimiento+'T12:00:00'):null;
+  const diasV=venceV?Math.ceil((venceV-hoyDv)/86400000):null;
+  if(diasV!==null&&diasV<=0){agregarAlertaAdmin(a);mostrarModalVencido(a,'vencida',true);return;}
+  if(diasV!==null&&diasV<=3){mostrarModalVencido(a,'por_vencer',true);}
+  const now=new Date();
+  const ad={alumnoId:a.alumnoId,nombre:`${a.nombre} ${a.apellidos}`,fecha:hoy,hora:now.toTimeString().split(' ')[0],timestamp:now.toISOString()};
+  try{
+    const r=await db.collection('asistencias').add(ad);
+    asists.push({id:r.id,...ad});
+    const hoyD=new Date();hoyD.setHours(0,0,0,0);
+    const vence=a.fechaVencimiento?new Date(a.fechaVencimiento+'T12:00:00'):null;
+    const dias=vence?Math.max(0,Math.ceil((vence-hoyD)/86400000)):0;
+    document.getElementById('aw-nom').textContent=`¡Hola, ${a.nombre}!`;
+    document.getElementById('aw-dt').textContent=now.toLocaleDateString('es-MX',{weekday:'long',year:'numeric',month:'long',day:'numeric'})+' — '+now.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
+    document.getElementById('aw-dias').textContent=dias;
+    document.getElementById('aw-vence').textContent=vence?fd(a.fechaVencimiento):'N/A';
+    document.getElementById('aw-mot').textContent=FRASES[Math.floor(Math.random()*FRASES.length)];
+    document.getElementById('a-form').style.display='none';
+    document.getElementById('aw').style.display='block';
+    updDash();
+  }catch(e){toast('Error al registrar asistencia',true);console.error(e);}
+}
+function resetAsist(){
+  document.getElementById('a-id').value='';
+  document.getElementById('a-form').style.display='block';
+  document.getElementById('aw').style.display='none';
+}
+// QR Scanner — captura input del escáner de código de barras
+let qrBuf='',qrTmr=null;
+document.addEventListener('keydown',e=>{
+  if(!document.getElementById('m-asist').classList.contains('act'))return;
+  if(document.activeElement&&document.activeElement.id==='a-id')return;
+  clearTimeout(qrTmr);
+  if(e.key==='Enter'&&qrBuf.length>2){regAsist(qrBuf);qrBuf='';}
+  else if(e.key.length===1){qrBuf+=e.key;qrTmr=setTimeout(()=>qrBuf='',500);}
+});
+
+// ============================================================
+// ALUMNOS
+// ============================================================
+function filtAlumnos(){
+  const q=(document.getElementById('al-q').value||'').toLowerCase();
+  const cls=document.getElementById('al-cls').value;
+  const hoy=new Date();hoy.setHours(0,0,0,0);
+  const lista=alumnos.filter(a=>{
+    if(a.estado==='inactivo')return false;
+    if(q&&!`${a.alumnoId} ${a.nombre} ${a.apellidos}`.toLowerCase().includes(q))return false;
+    if(cls&&!(a.clases||[]).includes(cls))return false;
+    return true;
+  });
+  const tb=document.getElementById('al-tbl');
+  if(!lista.length){tb.innerHTML='<tr><td colspan="9" class="em">Sin resultados</td></tr>';return;}
+  tb.innerHTML=lista.map(a=>{
+    const v=a.fechaVencimiento?new Date(a.fechaVencimiento+'T12:00:00'):null;
+    const d=v?Math.ceil((v-hoy)/86400000):null;
+    const st=d===null?'<span class="sb se">SIN PAGO</span>':d<0?'<span class="sb se">EN ESPERA</span>':'<span class="sb sa">ACTIVO</span>';
+    return`<tr>
+      <td><input type="checkbox" class="alck" value="${a.alumnoId}"></td>
+      <td class="idbg">${a.alumnoId}</td>
+      <td>${a.nombre} ${a.apellidos}</td>
+      <td>${a.planActual||'-'}</td>
+      <td>${fd(a.fechaVencimiento)}</td>
+      <td>${st}</td>
+      <td>
+        <div style="display:flex;flex-direction:column;gap:4px;min-width:110px">
+          <button class="btn bs" style="padding:.28rem .5rem;font-size:.72rem;width:100%;justify-content:flex-start;gap:.3rem" onclick="editarAlu('${a.alumnoId}')">✏️ Editar</button>
+          <button class="btn bsr" style="padding:.28rem .5rem;font-size:.72rem;width:100%;justify-content:flex-start;gap:.3rem" onclick="fichaAl('${a.alumnoId}')">👁 Ver info</button>
+          <button class="btn bi" style="padding:.28rem .5rem;font-size:.72rem;width:100%;justify-content:flex-start;gap:.3rem" onclick="inactAl('${a.alumnoId}')">😴 Inactivar</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+async function inactAl(aid){
+  const hoy=new Date().toISOString().split('T')[0];
+  try{
+    await db.collection('alumnos').doc(aid).update({estado:'inactivo',fechaInactivacion:hoy});
+    const i=alumnos.findIndex(a=>a.alumnoId===aid);
+    if(i>=0){alumnos[i].estado='inactivo';alumnos[i].fechaInactivacion=hoy;}
+    toast('Alumno inactivado');filtAlumnos();updDash();
+  }catch(e){toast('Error al inactivar',true);}
+}
+async function inactSel(){
+  const ids=[...document.querySelectorAll('.alck:checked')].map(c=>c.value);
+  if(!ids.length){toast('Selecciona al menos un alumno',true);return;}
+  for(const id of ids)await inactAl(id);
+}
+function fichaAl(aid){
+  const a=alumnos.find(x=>x.alumnoId===aid);if(!a)return;
+  document.getElementById('al-t').textContent='👤 FICHA DEL ALUMNO';
+  document.getElementById('al-c').innerHTML=snHtml(`<div style="line-height:1.9;font-size:.88rem">
+    <p><strong style="color:var(--gold)">ID:</strong> ${sn(a.alumnoId)}</p>
+    <p><strong style="color:var(--gold)">Nombre:</strong> ${sn(a.nombre)} ${sn(a.apellidos)}</p>
+    <p><strong style="color:var(--gold)">Edad:</strong> ${sn(a.edad)||'-'}</p>
+    <p><strong style="color:var(--gold)">F. Nacimiento:</strong> ${fd(a.fechaNacimiento)}</p>
+    <p><strong style="color:var(--gold)">CURP:</strong> ${sn(a.curp)||'-'}</p>
+    <p><strong style="color:var(--gold)">Celular:</strong> ${sn(a.celular)||'-'}</p>
+    <p><strong style="color:var(--gold)">Dirección:</strong> ${sn(a.direccion)||'-'}</p>
+    <p><strong style="color:var(--gold)">Clases:</strong> ${sn((a.clases||[]).join(', '))||'-'}</p>
+    <p><strong style="color:var(--gold)">Plan:</strong> ${sn(a.planActual)||'-'}</p>
+    <p><strong style="color:var(--gold)">Ult. Pago:</strong> ${fd(a.fechaUltimoPago)}</p>
+    <p><strong style="color:var(--gold)">Vence:</strong> ${fd(a.fechaVencimiento)}</p>
+  </div>`);
+  openM('m-alert');
+}
+
+// ============================================================
+// CUMPLEAÑOS
+// ============================================================
+function rendBday(){
+  const hoy=new Date();
+  const ms=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  document.getElementById('bd-mes-t').textContent=`📅 ${ms[hoy.getMonth()]}`;
+  const act=alumnos.filter(a=>a.estado!=='inactivo'&&a.fechaNacimiento);
+  const bhoy=act.filter(a=>{const d=new Date(a.fechaNacimiento+'T12:00:00');return d.getDate()===hoy.getDate()&&d.getMonth()===hoy.getMonth();});
+  const bsem=act.filter(a=>{
+    const fn=new Date(a.fechaNacimiento+'T12:00:00');
+    const ty=new Date(hoy.getFullYear(),fn.getMonth(),fn.getDate());
+    const d=Math.ceil((ty-hoy)/86400000);return d>0&&d<=7;
+  });
+  const bmes=act.filter(a=>new Date(a.fechaNacimiento+'T12:00:00').getMonth()===hoy.getMonth())
+    .sort((a,b)=>new Date(a.fechaNacimiento).getDate()-new Date(b.fechaNacimiento).getDate());
+  document.getElementById('bd-hoy').innerHTML=bhoy.length?bhoy.map(a=>bItem(a,true)).join(''):'<p class="em">Sin cumpleaños hoy</p>';
+  document.getElementById('bd-sem').innerHTML=bsem.length?bsem.map(a=>bItem(a,false)).join(''):'<p class="em">Sin próximos cumpleaños</p>';
+  document.getElementById('bd-mes').innerHTML=bmes.length?bmes.map(a=>bItem(a,false)).join(''):'<p class="em">Sin cumpleaños este mes</p>';
+}
+function bItem(a,isHoy){
+  const fn=new Date(a.fechaNacimiento+'T12:00:00');
+  const edad=new Date().getFullYear()-fn.getFullYear();
+  return`<div class="bdi">
+    <div><p style="color:var(--text-light);font-weight:700">${isHoy?'🎂 ':''}${a.nombre} ${a.apellidos}</p>
+    <p style="color:var(--text-muted);font-size:.78rem">${a.alumnoId} • ${edad} años • ${fn.getDate()}/${fn.getMonth()+1}</p></div>
+    <button class="btn bw" style="padding:.3rem .6rem;font-size:.75rem" onclick="felicWA('${a.alumnoId}')">📲 Felicitar</button>
+  </div>`;
+}
+function felicWA(aid){
+  const a=alumnos.find(x=>x.alumnoId===aid);
+  if(!a||!a.celular){toast('Sin número de celular registrado',true);return;}
+  const m=encodeURIComponent(`🎂 ¡Feliz Cumpleaños ${a.nombre}! 🥋\n\nTodo el equipo de *Dojo Ponce MMA* te desea un excelente día. ¡Eres parte importante de nuestra familia guerrera! 💪🔥\n\n¡Sigue entrenando y conquistando tus metas! 🏆`);
+  window.open(`https://wa.me/52${a.celular.replace(/\D/g,'')}?text=${m}`,'_blank');
+}
+
+// ============================================================
+// INACTIVOS
+// ============================================================
+function filtInact(){
+  const q=(document.getElementById('in-q').value||'').toLowerCase();
+  const hoy=new Date();hoy.setHours(0,0,0,0);
+  const lista=alumnos.filter(a=>a.estado==='inactivo')
+    .filter(a=>!q||`${a.alumnoId} ${a.nombre} ${a.apellidos}`.toLowerCase().includes(q))
+    .sort((a,b)=>{
+      const da=a.fechaInactivacion?new Date(a.fechaInactivacion):new Date(0);
+      const db2=b.fechaInactivacion?new Date(b.fechaInactivacion):new Date(0);
+      return db2-da;
+    });
+  const c=document.getElementById('in-list');
+  if(!lista.length){c.innerHTML='<p class="em">Sin alumnos inactivos</p>';return;}
+  c.innerHTML=lista.map(a=>{
+    const dias=a.fechaInactivacion?Math.floor((hoy-new Date(a.fechaInactivacion+'T12:00:00'))/86400000):'?';
+    return`<div class="ina">
+      <div>
+        <p class="idbg">${a.alumnoId}</p>
+        <p style="color:var(--text-light)">${a.nombre} ${a.apellidos}</p>
+        <p style="color:var(--text-muted);font-size:.78rem">${(a.clases||[]).join(', ')||'-'}</p>
+        <p class="itm">⏱ ${dias} día(s) inactivo — desde ${fd(a.fechaInactivacion)}</p>
+      </div>
+      <div style="display:flex;gap:.4rem;flex-wrap:wrap">
+        <button class="btn bs" style="padding:.35rem .7rem;font-size:.78rem" onclick="activAl('${a.alumnoId}')">✅ ACTIVAR</button>
+        <button class="btn bd" style="padding:.35rem .7rem;font-size:.78rem" onclick="confElim('${a.alumnoId}')">🗑️ ELIMINAR</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+async function activAl(aid){
+  try{
+    await db.collection('alumnos').doc(aid).update({estado:'activo',fechaInactivacion:null});
+    const i=alumnos.findIndex(a=>a.alumnoId===aid);
+    if(i>=0){alumnos[i].estado='activo';alumnos[i].fechaInactivacion=null;}
+    toast('✅ Alumno activado');filtInact();updDash();
+  }catch(e){toast('Error al activar',true);}
+}
+function confElim(aid){
+  const a=alumnos.find(x=>x.alumnoId===aid);if(!a)return;
+  document.getElementById('cfm-msg').textContent=`¿Eliminar permanentemente a ${a.nombre} ${a.apellidos} (${aid})?`;
+  document.getElementById('cfm-warn').textContent='⚠️ Se borrarán todos sus datos, pagos y asistencias. Esta acción NO se puede deshacer.';
+  document.getElementById('cfm-yes').onclick=()=>elimAl(aid);
+  openM('cfm');
+}
+async function elimAl(aid){
+  closeM('cfm');
+  try{
+    await db.collection('alumnos').doc(aid).delete();
+    const pp=pagos.filter(p=>p.alumnoId===aid);
+    const ap=asists.filter(a=>a.alumnoId===aid);
+    await Promise.all([...pp.map(p=>db.collection('pagos').doc(p.id).delete()),...ap.map(a=>db.collection('asistencias').doc(a.id).delete())]);
+    alumnos=alumnos.filter(a=>a.alumnoId!==aid);
+    pagos=pagos.filter(p=>p.alumnoId!==aid);
+    asists=asists.filter(a=>a.alumnoId!==aid);
+    toast('🗑️ Alumno eliminado definitivamente');filtInact();updDash();
+  }catch(e){toast('Error al eliminar',true);console.error(e);}
+}
+
+// ============================================================
+// AUTO-INACTIVAR 21 DÍAS
+// ============================================================
+async function autoInactivar(){
+  const hoy=new Date();hoy.setHours(0,0,0,0);
+  const cands=alumnos.filter(a=>{
+    if(a.estado==='inactivo'||!a.fechaVencimiento)return false;
+    const v=new Date(a.fechaVencimiento+'T12:00:00');v.setHours(0,0,0,0);
+    return Math.floor((hoy-v)/86400000)>=21;
+  });
+  for(const a of cands){
+    const d=hoy.toISOString().split('T')[0];
+    await db.collection('alumnos').doc(a.alumnoId).update({estado:'inactivo',fechaInactivacion:d}).catch(console.error);
+    const i=alumnos.findIndex(x=>x.alumnoId===a.alumnoId);
+    if(i>=0){alumnos[i].estado='inactivo';alumnos[i].fechaInactivacion=d;}
+  }
+  if(cands.length)toast(`${cands.length} alumno(s) auto-inactivados (21 días sin renovar)`);
+  updDash();
+}
+
+// ============================================================
+// FINANZAS
+// ============================================================
+function openFin(){
+  document.getElementById('pwd-ov').classList.remove('h');
+  document.getElementById('pwd-in').value='';
+  document.getElementById('pwd-err').style.display='none';
+  setTimeout(()=>document.getElementById('pwd-in').focus(),100);
+}
+async function verPwd(){
+  const h=await sha256(document.getElementById('pwd-in').value);
+  if(h===PWD_HASH){document.getElementById('pwd-ov').classList.add('h');show('m-fin');}
+  else{document.getElementById('pwd-err').style.display='block';document.getElementById('pwd-in').value='';}
+}
+async function sha256(msg){
+  const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(msg));
+  return Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join('');
+}
+function rendFin(){
+  const hoy=new Date();
+  const mc=`${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,'0')}`;
+  const pm=pagos.filter(p=>p.fecha&&p.fecha.startsWith(mc));
+  document.getElementById('f-tot').textContent='$'+pm.reduce((s,p)=>s+(p.monto||0),0).toLocaleString();
+  document.getElementById('f-men').textContent=pm.filter(p=>p.plan==='mensual').length;
+  document.getElementById('f-sem').textContent=pm.filter(p=>p.plan==='semanal').length;
+  document.getElementById('f-ins').textContent=pm.filter(p=>p.inscripcion).length;
+  document.getElementById('t-sem').value=tarifas.semanal;
+  document.getElementById('t-men').value=tarifas.mensual;
+  document.getElementById('t-ins').value=tarifas.inscripcion;
+  // Cargar campos de configuración
+  document.getElementById('cfg-wa').value=config.wa||'';
+  document.getElementById('cfg-titular').value=config.titular||'';
+  document.getElementById('cfg-cuenta').value=config.cuenta||'';
+  document.getElementById('cfg-mp-user').value=config.mpUser||'';
+  document.getElementById('cfg-mp-link').value=config.mpLink||'';
+  document.getElementById('cfg-efectivo').checked=config.efectivo!==false;
+  const m6=[],ml=[];
+  for(let i=5;i>=0;i--){
+    const d=new Date(hoy.getFullYear(),hoy.getMonth()-i,1);
+    const k=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    m6.push(pagos.filter(p=>p.fecha&&p.fecha.startsWith(k)).reduce((s,p)=>s+(p.monto||0),0));
+    ml.push(['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][d.getMonth()]);
+  }
+  rendBar('f-ch','f-cl',m6,ml);
+  const rec=[...pagos].sort((a,b)=>new Date(b.timestamp||0)-new Date(a.timestamp||0)).slice(0,20);
+  document.getElementById('f-tbl').innerHTML=rec.length?
+    rec.map(p=>`<tr><td>${fd(p.fecha)}</td><td>${p.nombre||''} <span class="idbg">${p.alumnoId||''}</span></td><td>${p.plan||'-'}${p.inscripcion?' +Insc':''}</td><td style="color:var(--gold-light)">$${(p.monto||0).toLocaleString()}</td><td style="color:var(--text-muted);font-size:.75rem">${p.referencia||'-'}</td></tr>`).join(''):
+    '<tr><td colspan="5" class="em">Sin pagos registrados</td></tr>';
+}
+async function guardarConfig(){
+  const wa=document.getElementById('cfg-wa').value.trim();
+  const titular=document.getElementById('cfg-titular').value.trim();
+  const cuenta=document.getElementById('cfg-cuenta').value.trim();
+  const mpUser=document.getElementById('cfg-mp-user').value.trim();
+  const mpLink=document.getElementById('cfg-mp-link').value.trim();
+  const efectivo=document.getElementById('cfg-efectivo').checked;
+  config={wa,titular,cuenta,mpUser,mpLink,efectivo};
+  try{
+    await db.collection('config').doc('general').set(config);
+    toast('✅ Configuración guardada');
+    actualizarPagosMod();
+  }catch(e){toast('Error al guardar configuración',true);}
+}
+
+function actualizarPagosMod(){
+  const cuentaEl=document.getElementById('pag-cuenta');
+  const mpEl=document.getElementById('pag-mp');
+  const efDiv=document.getElementById('pag-efectivo-div');
+  if(cuentaEl)cuentaEl.textContent=config.cuenta?(config.titular?config.titular+' — ':'')+config.cuenta:'No configurado';
+  if(mpEl)mpEl.innerHTML=config.mpLink?`<a href="${config.mpLink}" target="_blank" style="color:var(--gold)">${config.mpUser||config.mpLink}</a>`:(config.mpUser||'No configurado');
+  if(efDiv)efDiv.style.display=config.efectivo?'block':'none';
+  // Actualizar info de planes
+  const pgSem=document.getElementById('pg-sem');
+  const pgMen=document.getElementById('pg-men');
+  const pgIns=document.getElementById('pg-ins');
+  if(pgSem)pgSem.textContent='$'+tarifas.semanal+' MXN';
+  if(pgMen)pgMen.textContent='$'+tarifas.mensual+' MXN';
+  if(pgIns)pgIns.textContent='$'+tarifas.inscripcion+' MXN';
+}
+
+async function guardarTarifas(){
+  const s=parseInt(document.getElementById('t-sem').value);
+  const m=parseInt(document.getElementById('t-men').value);
+  const i=parseInt(document.getElementById('t-ins').value);
+  if(!s||!m||!i||s<1||m<1||i<1){toast('Tarifas inválidas',true);return;}
+  tarifas={semanal:s,mensual:m,inscripcion:i};
+  try{
+    await db.collection('config').doc('tarifas').set(tarifas);
+    toast('✅ Tarifas actualizadas');
+    document.getElementById('pg-sem').textContent=`$${s} MXN`;
+    document.getElementById('pg-men').textContent=`$${m} MXN`;
+    document.getElementById('pg-ins').textContent=`$${i} MXN`;
+  }catch(e){toast('Error al guardar tarifas',true);}
+}
+
+// ============================================================
+// CREDENCIAL
+// ============================================================
+function buscarCred(){
+  let qr=document.getElementById('c-srch').value.trim();
+  const q=(/^\d+$/.test(qr)?'DP-'+qr:qr).toLowerCase();
+  if(!q)return;
+  const a=alumnos.find(x=>(x.alumnoId||'').toLowerCase()===q||`${x.nombre} ${x.apellidos}`.toLowerCase().includes(q));
+  if(!a){toast('Alumno no encontrado',true);return;}
+  credSel=a;
+  // Separar nombre en líneas: nombre / apellido paterno / apellido materno
+  const partes = (a.apellidos||'').trim().split(' ');
+  const apPat = partes[0]||'';
+  const apMat = partes.slice(1).join(' ')||'';
+  const lineas = [a.nombre||'', apPat, apMat].filter(Boolean);
+  document.getElementById('c-nom').textContent = lineas.join('\n');
+  document.getElementById('c-id').textContent=a.alumnoId;
+  const qrDiv=document.getElementById('cred-qr');
+  qrDiv.innerHTML='';
+  new QRCode(qrDiv,{text:a.alumnoId,width:120,height:120,colorDark:'#000000',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.H});
+  document.getElementById('c-res').style.display='block';
+}
+// Captura la credencial dibujando directamente en canvas (máxima calidad)
+async function capturarCredencial(){
+  // Medir la credencial REAL en pantalla
+  const el = document.getElementById('cred-prev');
+  const rect = el.getBoundingClientRect();
+  const CRED_W = Math.round(rect.width);
+  // Alto exacto proporcional a la imagen dragon.png (2972x4096)
+  const IMG_RATIO = 4096 / 2972; // 1.3781
+  const CRED_H = Math.round(CRED_W * IMG_RATIO); // ~441px
+  const SCALE = 4;
+
+  const outW = CRED_W * SCALE;
+  const outH = CRED_H * SCALE;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = outW;
+  canvas.height = outH;
+  const ctx = canvas.getContext('2d');
+
+  // 1. Dibujar imagen de fondo en alta resolución directa
+  await new Promise((res,rej)=>{
+    const bgImg = new Image();
+    bgImg.crossOrigin = 'anonymous';
+    bgImg.onload = ()=>{
+      // Calcular proporciones para background-size: 100% auto
+      const imgAspect = bgImg.naturalHeight / bgImg.naturalWidth;
+      const drawH = outW * imgAspect;
+      // Fondo oscuro primero para cubrir cualquier área sin imagen
+      ctx.fillStyle = '#060c1a';
+      ctx.fillRect(0, 0, outW, outH);
+      ctx.drawImage(bgImg, 0, 0, outW, drawH);
+      res();
+    };
+    bgImg.onerror = ()=>{
+      // Si falla CORS, dibujar fondo sólido
+      ctx.fillStyle = '#060c1a';
+      ctx.fillRect(0,0,outW,outH);
+      res();
+    };
+  bgImg.src = 'https://dojoponcemma.github.io/dojo-ponce-mma/dragon.png?t='+Date.now();
+  });
+
+  // 2. Gradiente oscuro en parte inferior (igual que CSS)
+  const grad = ctx.createLinearGradient(0,0,0,outH);
+  grad.addColorStop(0.55, 'rgba(0,0,0,0)');
+  grad.addColorStop(0.70, 'rgba(0,0,0,0.5)');
+  grad.addColorStop(1.0,  'rgba(0,0,0,0.72)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0,0,outW,outH);
+
+  // 3. Posiciones por porcentaje — independientes del dispositivo
+  const idY   = Math.round(outH * 0.540);
+  const lineH = 20 * SCALE;
+  const nomY0 = Math.round(outH * 0.610);
+  const qrY   = Math.round(outH * 0.744);
+  const qrSize = 90 * SCALE;
+
+  // ID del alumno
+  ctx.font = `bold ${22*SCALE}px Cinzel, serif`;
+  ctx.textAlign = 'center';
+  ctx.strokeStyle = '#000';
+  ctx.lineWidth = 3 * SCALE;
+  ctx.strokeText(credSel.alumnoId || '', outW/2, idY);
+  ctx.fillStyle = '#f0c040';
+  ctx.shadowColor = 'rgba(201,168,76,0.6)';
+  ctx.shadowBlur = 8 * SCALE;
+  ctx.fillText(credSel.alumnoId || '', outW/2, idY);
+  ctx.shadowBlur = 0;
+
+  // Nombre en líneas
+  const partes = (credSel.apellidos||'').trim().split(' ');
+  const apPat = partes[0]||'';
+  const apMat = partes.slice(1).join(' ')||'';
+  const lineas = [credSel.nombre||'', apPat, apMat].filter(Boolean);
+  ctx.font = `700 ${17*SCALE}px Rajdhani, sans-serif`;
+  ctx.strokeStyle = '#000';
+  ctx.lineWidth = 2.5 * SCALE;
+  ctx.fillStyle = '#ffffff';
+  let nomY = nomY0;
+  lineas.forEach(linea=>{
+    ctx.strokeText(linea, outW/2, nomY);
+    ctx.fillText(linea, outW/2, nomY);
+    nomY += lineH;
+  });
+
+  // 5. QR — capturar del DOM y dibujar
+  const qrCanvas = document.querySelector('#cred-qr canvas');
+  if(qrCanvas){
+    const qrX = (outW - qrSize) / 2;
+    // Fondo blanco redondeado
+    const pad = 8*SCALE;
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.roundRect(qrX-pad, qrY-pad, qrSize+pad*2, qrSize+pad*2, 10*SCALE);
+    ctx.fill();
+    // Borde dorado
+    ctx.strokeStyle = 'rgba(201,168,76,0.7)';
+    ctx.lineWidth = 2*SCALE;
+    ctx.stroke();
+    // Dibujar QR
+    ctx.drawImage(qrCanvas, qrX, qrY, qrSize, qrSize);
+  }
+
+  // 6. Borde dorado de la credencial
+  ctx.strokeStyle = '#c9a84c';
+  ctx.lineWidth = 2*SCALE;
+  const r = 14*SCALE;
+  ctx.beginPath();
+  ctx.roundRect(1,1,outW-2,outH-2,r);
+  ctx.stroke();
+
+  return canvas;
+}
+
+// ── WhatsApp: SOLO abre chat del alumno con mensaje, sin descargar ──
+function credSoloWA(){
+  if(!credSel){toast('Sin alumno seleccionado',true);return;}
+  if(!credSel.celular){toast('Este alumno no tiene celular registrado',true);return;}
+  const cel=credSel.celular.replace(/\D/g,'');
+  const msg=encodeURIComponent(`🥋 *Dojo Ponce MMA*\n\nHola ${credSel.nombre} 👋\nTe compartimos tu credencial de miembro oficial.\n\n🪪 *ID:* ${credSel.alumnoId}\n\n📎 Adjunta la imagen de tu credencial.\n¡Sigue entrenando! 💪`);
+  window.open(`https://wa.me/52${cel}?text=${msg}`,'_blank');
+  toast(`✅ Abriendo chat de ${credSel.nombre}`);
+}
+
+// ── Solo Descargar: descarga directa alta resolución ──
+async function credSoloDescargar(){
+  if(!credSel){toast('Genera una credencial primero',true);return;}
+  toast('Generando imagen en alta resolución...');
+  try{
+    const canvas = await capturarCredencial();
+    // Usar toDataURL para máxima calidad PNG
+    const dataUrl = canvas.toDataURL('image/png',1.0);
+    const nombreArchivo = `credencial-${credSel.alumnoId}.png`;
+    const a = document.createElement('a');
+    a.style.display = 'none';
+    a.href = dataUrl;
+    a.download = nombreArchivo;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(()=>{
+      document.body.removeChild(a);
+    }, 3000);
+    toast('✅ Credencial guardada en alta resolución');
+  }catch(e){
+    toast('Error: '+e.message, true);
+    console.error(e);
+  }
+}
+
+// ── Imprimir: configurado exactamente 8x10cm ──
+async function credImprimir(){
+  if(!credSel){toast('Genera una credencial primero',true);return;}
+  toast('Preparando impresión...');
+  try{
+    const canvas=await capturarCredencial();
+    const dataUrl=canvas.toDataURL('image/png',1.0);
+    const win=window.open('','_blank');
+    win.document.write(`<!DOCTYPE html><html><head>
+    <meta charset="UTF-8">
+    <title>Credencial ${credSel.alumnoId}</title>
+    <style>
+      @page{
+        size:8cm 10cm;
+        margin:0;
+      }
+      *{margin:0;padding:0;box-sizing:border-box}
+      html,body{
+        width:8cm;
+        height:10cm;
+        overflow:hidden;
+        background:#fff;
+      }
+      .wrap{
+        width:8cm;
+        height:10cm;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+      }
+      img{
+        width:8cm;
+        height:10cm;
+        object-fit:contain;
+        display:block;
+      }
+      @media print{
+        html,body{width:8cm;height:10cm;}
+        .wrap{width:8cm;height:10cm;}
+        img{width:8cm;height:10cm;}
+      }
+    </style>
+    </head>
+    <body>
+      <div class="wrap">
+        <img src="${dataUrl}" onload="setTimeout(()=>window.print(),300)">
+      </div>
+    </body></html>`);
+    win.document.close();
+  }catch(e){toast('Error: '+e.message,true);}
+}
+
+// Mantener función antigua como alias por compatibilidad
+async function credWA(){ await credSoloWA(); }
+
+async function descargarCredencial(){
+  if(!credSel){toast('Genera una credencial primero',true);return;}
+  toast('Generando imagen para descargar...');
+  try{
+    const canvas=await capturarCredencial();
+    const dataUrl=canvas.toDataURL('image/png');
+    // Intentar share API primero (móvil)
+    canvas.toBlob(async blob=>{
+      const file=new File([blob],`credencial-${credSel.alumnoId}.png`,{type:'image/png'});
+      if(navigator.canShare&&navigator.canShare({files:[file]})){
+        await navigator.share({files:[file],title:`Credencial ${credSel.nombre}`});
+      } else {
+        // Descarga directa como PNG
+        const a=document.createElement('a');
+        a.href=dataUrl;
+        a.download=`credencial-${credSel.alumnoId}.png`;
+        a.click();
+        toast('✅ Imagen descargada');
+      }
+    },'image/png');
+  }catch(e){
+    toast('Error: '+e.message,true);
+    console.error(e);
+  }
+}
+function impCred(){
+  const el=document.getElementById('cred-prev');
+  const w=window.open('','_blank');
+  w.document.write('<'+'!DOCTYPE html><html><head><title>Credencial<\/title><link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Rajdhani:wght@600&display=swap" rel="stylesheet"><style>body{margin:2rem;background:#0a0804;display:flex;justify-content:center}@media print{body{background:#0a0804}}<\/style><\/head><body>'+el.outerHTML+'<scr'+'ipt>window.onload=()=>setTimeout(()=>{window.print();window.close()},600)<\/scr'+'ipt><\/body><\/html>');
+  w.document.close();
+}
+
+// ============================================================
+// QR ENTRADA
+// ============================================================
+function genQREntrada(){
+  const url=window.location.href.split('/').slice(0,-1).join('/')+'/asistencia.html';
+  const cont=document.getElementById('qr-dojo');
+  if(!cont)return;
+  cont.innerHTML='';
+  new QRCode(cont,{text:url,width:220,height:220,colorDark:'#c9a84c',colorLight:'#0a0804',correctLevel:QRCode.CorrectLevel.H});
+}
+function impQR(){
+  const qrCanvas=document.querySelector('#qr-dojo canvas');
+  const qrDataUrl=qrCanvas?qrCanvas.toDataURL('image/png'):'';
+  const url=window.location.href.split('/').slice(0,-1).join('/')+'/asistencia.html';
+  const w=window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head><title>QR Entrada Dojo Ponce MMA</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Rajdhani:wght@600&display=swap" rel="stylesheet">
+    <style>
+      *{margin:0;padding:0;box-sizing:border-box}
+      body{background:#0a0804;color:#e8d5a0;font-family:'Rajdhani',sans-serif;
+        display:flex;align-items:center;justify-content:center;min-height:100vh;padding:2rem}
+      .card{background:linear-gradient(135deg,#1a1208,#0d0804);border:3px solid #c9a84c;
+        border-radius:20px;padding:2.5rem;text-align:center;max-width:420px;width:100%}
+      img.logo{width:90px;margin-bottom:1rem}
+      h1{font-family:'Cinzel',serif;color:#f0c040;font-size:1.6rem;letter-spacing:.15em;margin-bottom:.3rem}
+      p.sub{color:#7a6a4a;font-size:.8rem;letter-spacing:.2em;margin-bottom:1.5rem}
+      img.qr{width:260px;height:260px;border:4px solid #c9a84c;border-radius:12px;margin:0 auto 1.5rem}
+      p.inst{color:#a09060;font-size:.82rem;margin-bottom:1rem}
+      .steps{text-align:left;background:rgba(201,168,76,.05);border:1px solid rgba(201,168,76,.2);
+        border-radius:10px;padding:1rem;margin-top:1rem}
+      .steps h3{font-family:'Cinzel',serif;color:#c9a84c;font-size:.82rem;margin-bottom:.6rem}
+      .steps li{font-size:.8rem;color:#e8d5a0;margin-bottom:.35rem;list-style:none;padding-left:.8rem;position:relative}
+      .steps li::before{content:"•";color:#c9a84c;position:absolute;left:0}
+      @media print{body{background:#0a0804;-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+    </style></head>
+    <body>
+      <div class="card">
+        <img class="logo" src="logo.png" alt="Logo">
+        <h1>ESCANEA PARA REGISTRAR</h1>
+        <p class="sub">DOJO PONCE MMA — ASISTENCIA</p>
+        ${qrDataUrl?`<img class="qr" src="${qrDataUrl}" alt="QR">`:'<p style="color:#e74c3c">Error al generar QR</p>'}
+        <p class="inst">Coloca esta hoja en la entrada del gimnasio</p>
+        <div class="steps">
+          <h3>📱 CÓMO FUNCIONA</h3>
+          <ul>
+            <li>Escanea este QR con tu celular</li>
+            <li>Se abre la pantalla de asistencia</li>
+            <li>Ingresa tu ID y registra tu entrada</li>
+            <li>Ve tus días restantes de membresía</li>
+          </ul>
+        </div>
+      </div>
+    <\/body></html>`);
+  w.document.close();
+  setTimeout(()=>w.print(),800);
+}
+
+// ============================================================
+// MI MEMBRESÍA
+// ============================================================
+function consMem(){
+  let qr=document.getElementById('mb-q').value.trim();
+  const q=(/^\d+$/.test(qr)?'DP-'+qr:qr).toLowerCase();
+  if(!q)return;
+  const a=alumnos.find(x=>(x.alumnoId||'').toLowerCase()===q||`${x.nombre} ${x.apellidos}`.toLowerCase().includes(q));
+  if(!a){toast('Alumno no encontrado',true);return;}
+  const hoy=new Date();hoy.setHours(0,0,0,0);
+  const vence=a.fechaVencimiento?new Date(a.fechaVencimiento+'T12:00:00'):null;
+  const dias=vence?Math.max(0,Math.ceil((vence-hoy)/86400000)):0;
+  document.getElementById('mb-nom').textContent=`${a.nombre} ${a.apellidos}`;
+  document.getElementById('mb-id').textContent=a.alumnoId;
+  document.getElementById('mb-plan').textContent=a.planActual?`Plan ${a.planActual}`:'Sin plan activo';
+  const de=document.getElementById('mb-dias');
+  de.textContent=dias;de.className='mdays'+(dias<=3?' urg':'');
+  document.getElementById('mb-vence').textContent=fd(a.fechaVencimiento)||'N/A';
+  let st='';
+  if(!a.fechaVencimiento)st='<span class="sb se">SIN MEMBRESÍA</span>';
+  else if(dias<=0)st='<span class="sb sv">VENCIDA</span>';
+  else if(dias<=3)st='<span class="sb se">POR VENCER</span>';
+  else st='<span class="sb sa">ACTIVA ✅</span>';
+  document.getElementById('mb-sbadge').innerHTML=st;
+  document.getElementById('mb-res').style.display='block';
+}
+
+// ============================================================
+// REPORTES
+// ============================================================
+function rendRep(){
+  const hoy=new Date();
+  const m6=[],ml=[];
+  for(let i=5;i>=0;i--){
+    const d=new Date(hoy.getFullYear(),hoy.getMonth()-i,1);
+    m6.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);
+    ml.push(['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][d.getMonth()]);
+  }
+  rendBar('r-ing','r-ingl',m6.map(m=>alumnos.filter(a=>(a.fechaRegistro||'').startsWith(m)).length),ml);
+  rendBar('r-baj','r-bajl',m6.map(m=>alumnos.filter(a=>(a.fechaInactivacion||'').startsWith(m)).length),ml);
+  const dias7=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  const ac=[0,0,0,0,0,0,0];
+  const h28=new Date();h28.setDate(h28.getDate()-28);
+  asists.filter(a=>new Date(a.fecha)>=h28).forEach(a=>{ac[new Date(a.fecha+'T12:00:00').getDay()]++;});
+  rendBar('r-asis','r-asisl',ac,dias7);
+  const mc=`${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,'0')}`;
+  const am=asists.filter(a=>(a.fecha||'').startsWith(mc));
+  const cnt={};am.forEach(a=>{cnt[a.alumnoId]=(cnt[a.alumnoId]||0)+1;});
+  const actv=alumnos.filter(a=>a.estado==='activo').map(a=>({...a,n:cnt[a.alumnoId]||0})).sort((a,b)=>b.n-a.n);
+  document.getElementById('r-top1').innerHTML=actv.slice(0,5).map((a,i)=>`<div style="padding:.4rem;border-bottom:1px solid var(--border-gold)"><span style="color:var(--gold)">${i+1}.</span> ${sn(a.nombre)} ${sn(a.apellidos)}<span style="color:#2ecc71;float:right">${a.n}✓</span></div>`).join('')||'<p class="em">Sin datos</p>';
+  document.getElementById('r-top2').innerHTML=[...actv].reverse().slice(0,5).map((a,i)=>`<div style="padding:.4rem;border-bottom:1px solid var(--border-gold)"><span style="color:var(--gold)">${i+1}.</span> ${sn(a.nombre)} ${sn(a.apellidos)}<span style="color:#e74c3c;float:right">${a.n}✓</span></div>`).join('')||'<p class="em">Sin datos</p>';
+  const vals=m6.map(m=>alumnos.filter(a=>(a.fechaRegistro||'').startsWith(m)).length);
+  const maxMi=vals.indexOf(Math.max(...vals));
+  const minMi=vals.indexOf(Math.min(...vals));
+  // Excluir domingo(0) y sábado(6) del análisis de días laborables
+  const acLab=ac.map((v,i)=>(i===0||i===6)?-1:v);
+  const maxDi=acLab.indexOf(Math.max(...acLab.filter(v=>v>=0)));
+  const acLabMin=acLab.map((v,i)=>(i===0||i===6)?Infinity:v);
+  const minDi=acLabMin.indexOf(Math.min(...acLabMin.filter(v=>v<Infinity)));
+  document.getElementById('r-anal').innerHTML=`
+    <p>📈 <strong style="color:var(--gold)">Mes con más ingresos:</strong> ${ml[maxMi]} (${vals[maxMi]} nuevos alumnos)</p>
+    <p>📉 <strong style="color:var(--gold)">Mes con menos ingresos:</strong> ${ml[minMi]} (${vals[minMi]} nuevos alumnos)</p>
+    <p>✅ <strong style="color:var(--gold)">Día con más asistencias:</strong> ${dias7[maxDi]} (${ac[maxDi]} asistencias)</p>
+    <p>❌ <strong style="color:var(--gold)">Día con menos asistencias:</strong> ${dias7[minDi]} (${ac[minDi]} asistencias)</p>
+    <p>👥 <strong style="color:var(--gold)">Total alumnos activos:</strong> ${actv.length}</p>
+    <p>💪 <strong style="color:var(--gold)">Promedio asistencias/día (28 días):</strong> ${Math.round(asists.filter(a=>new Date(a.fecha)>=h28).length/28)}</p>`;
+}
+
+// ============================================================
+// WHATSAPP ALERTAS
+// ============================================================
+function checkWA(){
+  const hoy=new Date();hoy.setHours(0,0,0,0);
+  const alertas=alumnos.filter(a=>{
+    if(!a.fechaVencimiento||a.estado==='inactivo')return false;
+    const v=new Date(a.fechaVencimiento+'T12:00:00');v.setHours(0,0,0,0);
+    return Math.ceil((v-hoy)/86400000)<=3;
+  });
+  if(!alertas.length)return;
+  document.getElementById('wa-list').innerHTML=alertas.map(a=>{
+    const v=new Date(a.fechaVencimiento+'T12:00:00');
+    const d=Math.ceil((v-hoy)/86400000);
+    const est=d<0?`Vencida hace ${Math.abs(d)} día(s)`:d===0?'⚠️ Vence HOY':`Vence en ${d} día(s)`;
+    const msg=waMsg(a,d);
+    return`<div class="wai"><div class=""><h4>${a.nombre} ${a.apellidos}</h4><p>${est}</p></div>
+      <button class="btn bw" style="padding:.35rem .7rem;font-size:.78rem" onclick="window.open('https://wa.me/52${(a.celular||'').replace(/\D/g,'')}?text=${encodeURIComponent(msg)}','_blank')">Enviar 📱</button></div>`;
+  }).join('');
+  openM('m-wa');
+}
+function waMsg(a,d){
+  const nom=a.nombre,vence=fd(a.fechaVencimiento);
+  let metodos='\n\n💳 *Métodos de pago:*';
+  if(config.cuenta)metodos+=`\n🏦 Transferencia: ${config.cuenta}${config.titular?' ('+config.titular+')':''}`;
+  if(config.mpLink||config.mpUser)metodos+=`\n📱 Mercado Pago: ${config.mpLink||config.mpUser}`;
+  if(config.efectivo)metodos+='\n💵 Efectivo en recepción del Dojo';
+  if(d<0)return`Hola ${nom} 👋, tu membresía en *Dojo Ponce MMA* venció el ${vence} ❌.\n\nTe invitamos a renovarla para seguir entrenando 🥋:${metodos}\n\n¡Te esperamos! 🔥`;
+  return`Hola ${nom} 👋, tu membresía en *Dojo Ponce MMA* vence el ${vence} ⏳.\n\nTe invitamos a renovarla y seguir entrenando 💪:${metodos}\n\n¡Gracias por ser parte de nuestra familia! 🥋🙏`;
+}
+
+// ============================================================
+// HELPERS
+// ============================================================
+function rendBar(cid,lid,vals,labels){
+  const max=Math.max(...vals,1);
+  document.getElementById(cid).innerHTML=vals.map((v,i)=>`<div class="br" style="height:${Math.round((v/max)*135)}px" data-v="${v}" title="${labels[i]}:${v}"></div>`).join('');
+  document.getElementById(lid).innerHTML=labels.map(l=>`<div class="bl">${l}</div>`).join('');
+}
+function fd(str){
+  if(!str)return'-';
+  const d=new Date(str+'T12:00:00');
+  return`${d.getDate().toString().padStart(2,'0')}/${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getFullYear()}`;
+}
+function toast(msg,isErr=false){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className='show'+(isErr?' err':'');
+  setTimeout(()=>t.className='',3500);
+}
+function openM(id){document.getElementById(id).classList.add('show');}
+function closeM(id){document.getElementById(id).classList.remove('show');}
+
+// ============================================================
+// INIT
+// ============================================================
+
+// ============================================================
+// MODAL MEMBRESÍA VENCIDA / INACTIVA
+// ============================================================
+// Log de alumnos con membresía vencida que intentaron registrar hoy (para admin)
+const alertasAdminHoy=[];
+function agregarAlertaAdmin(a){
+  const ya=alertasAdminHoy.find(x=>x.alumnoId===a.alumnoId);
+  if(!ya){
+    alertasAdminHoy.push({...a,horaIntento:new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'})});
+    actualizarPanelAlertasAdmin();
+  }
+}
+function actualizarPanelAlertasAdmin(){
+  let panel=document.getElementById('panel-alertas-admin');
+  if(!panel){
+    panel=document.createElement('div');
+    panel.id='panel-alertas-admin';
+    panel.style.cssText='position:fixed;bottom:80px;right:16px;z-index:9000;background:linear-gradient(135deg,#1a0e00,#2a1506);border:2px solid #c9a84c;border-radius:14px;padding:1rem;max-width:300px;width:90vw;max-height:50vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.8);font-family:Rajdhani,sans-serif';
+    document.body.appendChild(panel);
+  }
+  const nombres=alertasAdminHoy.map(a=>`<div style="padding:.5rem 0;border-bottom:1px solid rgba(201,168,76,.15);color:#e8d5a0;font-size:.9rem">
+    <strong style="color:#f0c040">${a.nombre} ${a.apellidos}</strong>
+    <span style="color:#c9a84c;font-size:.78rem"> · ${a.horaIntento}</span><br>
+    <span style="color:#e07050;font-size:.8rem">${a.estado==='inactivo'?'Membresía inactiva':'Membresía vencida'}</span>
+    ${a.celular?`<button onclick="window.open('https://wa.me/52${(a.celular||'').replace(/\D/g,'')}?text=${encodeURIComponent('Hola '+a.nombre+' 👋, te esperamos en Dojo Ponce MMA para renovar tu membresía 🥋')}','_blank')" style="float:right;background:#075e54;color:#7affcc;border:none;border-radius:6px;padding:2px 8px;font-size:.75rem;cursor:pointer">📲</button>`:''}
+  </div>`).join('');
+  panel.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem">
+    <span style="font-family:Cinzel,serif;color:#f0c040;font-size:.82rem;letter-spacing:.1em">⚠️ MEMBRESÍAS VENCIDAS HOY</span>
+    <button onclick="document.getElementById('panel-alertas-admin').style.display='none'" style="background:none;border:none;color:#7a6a4a;cursor:pointer;font-size:1rem">✕</button>
+  </div>${nombres}`;
+  panel.style.display='block';
+}
+
+function mostrarModalVencido(a,tipo,esAdmin=false){
+  const m=document.getElementById('modal-vencido');
+  if(!m)return;
+  const ico=document.getElementById('mv-ico');
+  const tit=document.getElementById('mv-tit');
+  const msg=document.getElementById('mv-msg');
+  const cel=a.celular||'';
+  if(tipo==='inactivo'){
+    ico.textContent='😴';
+    tit.textContent='Membresía Inactiva';
+    // Alumno: mensaje cordial sin WA. Admin: mensaje con opción WA
+    msg.textContent=esAdmin
+      ? `${a.nombre} ${a.apellidos} tiene la membresía inactiva. Puedes contactarle por WhatsApp para invitarle a renovar.`
+      : `Hola ${a.nombre} 👋, tu membresía está inactiva. Pasa a recepción para reactivarla y seguir entrenando. ¡Te esperamos!`;
+  }else if(tipo==='vencida'){
+    ico.textContent='⚠️';
+    tit.textContent='Membresía Vencida';
+    msg.textContent=esAdmin
+      ? `${a.nombre} ${a.apellidos} tiene la membresía vencida. Puedes enviarle un recordatorio por WhatsApp.`
+      : `Hola ${a.nombre} 👋, tu membresía está vencida. Pasa a recepción a renovarla para continuar entrenando. ¡El equipo te espera!`;
+  }else{
+    ico.textContent='🔔';
+    tit.textContent='Membresía por Vencer';
+    msg.textContent=esAdmin
+      ? `${a.nombre} ${a.apellidos} tiene la membresía próxima a vencer. Considera enviarle un recordatorio.`
+      : `Hola ${a.nombre} 👋, tu membresía vence pronto. Renueva a tiempo para no perder tu continuidad. ¡Nos vemos en el tatami!`;
+  }
+  const btnWA=document.getElementById('mv-wa');
+  // Botón WA solo visible para el admin y solo si tiene celular
+  if(esAdmin&&cel){
+    const txtWA=encodeURIComponent(`Hola ${a.nombre} 👋, te recordamos que debes renovar tu membresía en Dojo Ponce MMA. ¡Te esperamos! 🥋`);
+    btnWA.onclick=()=>window.open(`https://wa.me/52${cel.replace(/\D/g,'')}?text=${txtWA}`,'_blank');
+    btnWA.style.display='inline-flex';
+  }else{
+    btnWA.style.display='none';
+  }
+  m.style.display='flex';
+}
+function cerrarModalVencido(){
+  const m=document.getElementById('modal-vencido');
+  if(m)m.style.display='none';
+}
+
+async function verAppLogin(){
+  const inp=document.getElementById('app-pwd');
+  const err=document.getElementById('app-login-err');
+  const val=inp.value;
+  if(!val)return;
+  const hash=await sha256(val);
+  if(hash===PWD_HASH){
+    document.getElementById('app-login').classList.add('h');
+    inp.value='';
+    err.style.display='none';
+  }else{
+    err.style.display='block';
+    inp.value='';
+    inp.focus();
+    setTimeout(()=>{err.style.display='none';},3000);
+  }
+}
+document.addEventListener('DOMContentLoaded',initApp);
+
+// ============================================================
+// PWA — Service Worker + Instalación
+// ============================================================
+let deferredInstallPrompt=null;
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('./sw.js')
+      .then(r=>console.log('[SW] Registrado:',r.scope))
+      .catch(e=>console.log('[SW] Error:',e));
+  });
+}
+window.addEventListener('beforeinstallprompt',e=>{
+  e.preventDefault();
+  deferredInstallPrompt=e;
+  const btn=document.getElementById('pwa-install-btn');
+  if(btn)btn.style.display='flex';
+});
+window.addEventListener('appinstalled',()=>{
+  deferredInstallPrompt=null;
+  const btn=document.getElementById('pwa-install-btn');
+  if(btn)btn.style.display='none';
+  toast('✅ Dojo Ponce MMA instalado');
+});
+function instalarPWA(){
+  if(!deferredInstallPrompt){toast('Usa el menú del navegador para instalar');return;}
+  deferredInstallPrompt.prompt();
+  deferredInstallPrompt.userChoice.then(c=>{
+    if(c.outcome==='accepted')toast('✅ Instalando...');
+    deferredInstallPrompt=null;
+  });
+}
+
+function mostrarBarraAlu(){
+  const b=document.getElementById('barra-alumnos');
+  if(b){b.style.display='block';}
+}
+function ocultarBarraAlu(){
+  const b=document.getElementById('barra-alumnos');
+  if(b){b.style.display='none';}
+}
+
+function editarAlu(aid){
+  const a=alumnos.find(x=>x.alumnoId===aid);
+  if(!a){toast('Alumno no encontrado',true);return;}
+  document.getElementById('m-edit-alu').dataset.aid=aid;
+  document.getElementById('edit-alu-id').textContent='· '+aid;
+  document.getElementById('e-nom').value=a.nombre||'';
+  document.getElementById('e-ap').value=a.apellidos||'';
+  document.getElementById('e-edad').value=a.edad||'';
+  document.getElementById('e-fn').value=a.fechaNacimiento||'';
+  document.getElementById('e-curp').value=a.curp||'';
+  document.getElementById('e-cel').value=a.celular||'';
+  document.getElementById('e-dir').value=a.direccion||'';
+  document.querySelectorAll('.e-cls').forEach(cb=>{
+    cb.checked=(a.clases||[]).includes(cb.value);
+  });
+  openM('m-edit-alu');
+}
+
+async function guardarEdicionAlu(){
+  const aid=document.getElementById('m-edit-alu').dataset.aid;
+  if(!aid){toast('Error: alumno no identificado',true);return;}
+  const nom=sn(document.getElementById('e-nom').value.trim());
+  const ap=sn(document.getElementById('e-ap').value.trim());
+  if(!nom||!ap){toast('Nombre y apellidos son obligatorios',true);return;}
+  const clases=[...document.querySelectorAll('.e-cls:checked')].map(c=>c.value);
+  const datos={
+    nombre:nom,apellidos:ap,
+    edad:sn(document.getElementById('e-edad').value||''),
+    fechaNacimiento:sn(document.getElementById('e-fn').value||''),
+    curp:sn(document.getElementById('e-curp').value.trim().toUpperCase()||''),
+    celular:sn(document.getElementById('e-cel').value.trim().replace(/[\s\-\.]/g,'')||''),
+    direccion:sn(document.getElementById('e-dir').value.trim()||''),
+    clases,
+  };
+  try{
+    await db.collection('alumnos').doc(aid).update(datos);
+    const i=alumnos.findIndex(a=>a.alumnoId===aid);
+    if(i>=0)alumnos[i]={...alumnos[i],...datos};
+    closeM('m-edit-alu');
+    toast('✅ Alumno actualizado correctamente');
+    filtAlumnos();
+  }catch(e){toast('Error al guardar: '+e.message,true);}
+}
+</script>
+
+<!-- MODAL EDITAR ALUMNO -->
+<div class="mover" id="m-edit-alu">
+  <div class="mbox" style="max-width:520px;width:100%;max-height:90vh;overflow-y:auto">
+    <h3 style="font-family:'Cinzel',serif;color:var(--gold-light);margin-bottom:1rem">
+      ✏️ EDITAR ALUMNO <span id="edit-alu-id" style="font-size:.8rem;color:var(--gold);opacity:.7"></span>
+    </h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.7rem;margin-bottom:.8rem">
+      <div class="fgrp"><label>Nombre(s)</label><input id="e-nom" type="text" placeholder="Nombre(s)"></div>
+      <div class="fgrp"><label>Apellidos</label><input id="e-ap" type="text" placeholder="Apellidos"></div>
+      <div class="fgrp"><label>Edad</label><input id="e-edad" type="number" placeholder="Edad" min="4" max="99"></div>
+      <div class="fgrp"><label>Fecha Nacimiento</label><input id="e-fn" type="date"></div>
+      <div class="fgrp"><label>CURP</label><input id="e-curp" type="text" placeholder="CURP" maxlength="18" style="text-transform:uppercase"></div>
+      <div class="fgrp"><label>Celular</label><input id="e-cel" type="tel" placeholder="6140000000"></div>
+      <div class="fgrp" style="grid-column:1/-1"><label>Dirección</label><input id="e-dir" type="text" placeholder="Calle, Número, Colonia"></div>
+    </div>
+    <div class="card" style="margin-bottom:.8rem;padding:.8rem">
+      <div class="ct" style="font-size:.75rem;margin-bottom:.5rem">🥋 CLASE / HORARIO</div>
+      <div class="cbg">
+        <label class="cbi"><input type="checkbox" class="e-cls" value="17:00-18:00"> Lun-Vie 5:00-6:00 PM</label>
+        <label class="cbi"><input type="checkbox" class="e-cls" value="18:00-19:00"> Lun-Vie 6:00-7:00 PM</label>
+        <label class="cbi"><input type="checkbox" class="e-cls" value="19:00-20:00"> Lun-Vie 7:00-8:00 PM</label>
+        <label class="cbi"><input type="checkbox" class="e-cls" value="20:00-21:00"> Lun-Vie 8:00-9:00 PM</label>
+        <label class="cbi"><input type="checkbox" class="e-cls" value="21:00-22:00"> Lun-Vie 9:00-10:00 PM</label>
+        <label class="cbi"><input type="checkbox" class="e-cls" value="sab-09:00-10:00"> Sábados 9:00-10:00 AM</label>
+      </div>
+    </div>
+    <div style="display:flex;gap:.5rem;justify-content:center">
+      <button class="btn bs" onclick="guardarEdicionAlu()">💾 GUARDAR CAMBIOS</button>
+      <button class="btn bc" onclick="closeM('m-edit-alu')">✕ CANCELAR</button>
+    </div>
+  </div>
+</div>
+</body>
+</html>
