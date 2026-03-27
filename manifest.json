@@ -1,0 +1,24 @@
+{
+  "name": "Dojo Ponce MMA",
+  "short_name": "Dojo Ponce",
+  "description": "Sistema de Administración Dojo Ponce MMA",
+  "start_url": "./SistemaDojoPonceMMA_FINAL-9.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#0a0804",
+  "background_color": "transparent",
+  "icons": [
+    {
+      "src": "logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
